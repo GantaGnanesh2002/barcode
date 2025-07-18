@@ -2,35 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Smart Order System</title>
+  <title>Smart Inventory Order</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f9f9f9;
       text-align: center;
       padding: 10px;
+      background: #f2f2f2;
     }
     #reader {
       width: 100%;
       max-width: 360px;
-      margin: 20px auto;
+      margin: 0 auto;
     }
-    .box {
-      background: #fff;
-      padding: 10px;
+    .section {
+      background: white;
+      padding: 15px;
       margin: 10px auto;
-      width: 90%;
-      max-width: 400px;
       border-radius: 10px;
+      max-width: 400px;
       box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      width: 90%;
+      max-width: 300px;
+      font-size: 1rem;
     }
     .qty-controls {
       display: flex;
       justify-content: center;
       align-items: center;
-      margin: 10px 0;
     }
     .qty-controls button {
       width: 40px;
@@ -48,23 +53,16 @@
       color: red;
       cursor: pointer;
     }
-    input, button {
-      padding: 10px;
-      margin: 5px;
-      width: 90%;
-      max-width: 300px;
-      font-size: 1rem;
-    }
   </style>
 </head>
 <body>
 
-  <h2>📦 Smart Order System</h2>
+  <h2>📦 Inventory Order Scanner</h2>
   <div id="reader"></div>
   <input type="text" id="barcode" placeholder="Scanned Barcode" readonly><br>
 
-  <!-- Show Item Found Section -->
-  <div id="foundSection" class="box" style="display: none;">
+  <!-- Section if item FOUND -->
+  <div id="foundSection" class="section" style="display: none;">
     <p><strong>Name:</strong> <span id="itemName"></span></p>
     <p><strong>Scale:</strong> <span id="itemScale"></span></p>
     <p><strong>Department:</strong> <span id="itemDept"></span></p>
@@ -78,8 +76,8 @@
     <button onclick="addToOrder()">➕ Add to Order</button>
   </div>
 
-  <!-- Show Add Item Form If Not Found -->
-  <div id="notFoundSection" class="box" style="display: none;">
+  <!-- Section if item NOT found -->
+  <div id="notFoundSection" class="section" style="display: none;">
     <h4>🆕 Add New Item</h4>
     <input type="text" id="newItemName" placeholder="Item Name"><br>
     <input type="text" id="newScale" placeholder="Scale"><br>
@@ -92,7 +90,7 @@
   <div id="orderList"></div>
 
   <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbxq4nWBRtznmm5K53Dh7F5bf-xLXmIMHX8gj8mI0b54iN7_a8XS6Pp_pfIHjF1KzoNB/exec"; // Replace this
+    const scriptURL = "https://script.google.com/macros/s/AKfycbzRPTEwDJGAMm5BWzO_6pVlGt6wjrE_-YyP5p3FnZn_fcY2szRSuy7JKqBttXBd1XyI/exec"; // Replace this with your Web App URL
 
     let currentBarcode = "";
     let currentQty = 1;
@@ -107,16 +105,16 @@
         checkBarcode(decodedText);
       });
 
-    function checkBarcode(code) {
+    function checkBarcode(barcode) {
       fetch(scriptURL, {
         method: "POST",
-        body: JSON.stringify({ action: "check", barcode: code })
+        body: JSON.stringify({ action: "check", barcode: barcode })
       })
       .then(res => res.text())
       .then(txt => {
         const data = JSON.parse(txt);
         if (data.found) {
-          // Show item info
+          // Show quantity only if item is found
           document.getElementById("itemName").innerText = data.itemName;
           document.getElementById("itemScale").innerText = data.scale;
           document.getElementById("itemDept").innerText = data.department;
@@ -125,9 +123,9 @@
           document.getElementById("foundSection").style.display = "block";
           document.getElementById("notFoundSection").style.display = "none";
         } else {
-          // Show add item form
-          document.getElementById("notFoundSection").style.display = "block";
+          // Show add form if not found
           document.getElementById("foundSection").style.display = "none";
+          document.getElementById("notFoundSection").style.display = "block";
         }
       });
     }
@@ -181,7 +179,7 @@
       })
       .then(res => res.text())
       .then(msg => {
-        alert("✅ Item added to inventory");
+        alert("✅ Item added to inventory.");
         document.getElementById("notFoundSection").style.display = "none";
         reader.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
       });
@@ -190,3 +188,4 @@
 
 </body>
 </html>
+
