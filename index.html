@@ -291,6 +291,49 @@
 
   document.getElementById('qtyMinus').addEventListener('click', () => {
     const qtyInput = document.getElementById('qtyInput');
-    let val = Number(qtyInput.
+    let val = Number(qtyInput.value);
+    if (val > 1) qtyInput.value = val - 1;
+  });
+
+  // Button clicks
+  document.getElementById('placeOrderBtn').addEventListener('click', placeOrder);
+  document.getElementById('addItemBtn').addEventListener('click', addItem);
+  document.getElementById('deleteItemBtn').addEventListener('click', deleteItem);
+
+  function startScanner() {
+    Html5Qrcode.getCameras().then(devices => {
+      if (devices && devices.length) {
+        const cameraId = devices[0].id;
+        html5QrCode.start(
+          cameraId,
+          {
+            fps: 10,
+            qrbox: {width: 250, height: 250}
+          },
+          scanSuccess,
+          errorMessage => {
+            // console.log(`QR scan error: ${errorMessage}`);
+          }
+        ).catch(err => {
+          showStatus('Unable to start scanner: ' + err, true);
+        });
+      } else {
+        showStatus('No cameras found.', true);
+      }
+    }).catch(err => {
+      showStatus('Error getting cameras: ' + err, true);
+    });
+  }
+
+  // Start scanning when page loads
+  window.onload = () => {
+    resetAll();
+    startScanner();
+  };
+</script>
+
+</body>
+</html>
+
 
 
