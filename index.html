@@ -3,7 +3,7 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mobile Barcode Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
       margin: 0;
@@ -36,12 +36,31 @@
       word-wrap: break-word;
     }
 
+    #try-again {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #try-again:hover {
+      background-color: #0056b3;
+    }
+
     @media (max-width: 480px) {
       h2 {
         font-size: 1.4rem;
       }
       #result {
         font-size: 1.1rem;
+      }
+      #try-again {
+        font-size: 1rem;
       }
     }
   </style>
@@ -51,28 +70,47 @@
   <h2>📷 Scan Barcode / QR Code</h2>
   <div id="reader"></div>
   <div id="result">Waiting for scan...</div>
+  <button id="try-again">🔄 Try Again</button>
 
   <script>
     const resultElement = document.getElementById('result');
+    const tryAgainBtn = document.getElementById('try-again');
+    const readerId = "reader";
 
-    function onScanSuccess(decodedText, decodedResult) {
-      resultElement.innerText = `✅ Scanned Result: ${decodedText}`;
-      html5QrcodeScanner.clear();
+    let scanner = null;
+
+    function startScanner() {
+      scanner = new Html5Qrcode(readerId);
+      scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        (decodedText, decodedResult) => {
+          resultElement.innerText = `✅ Scanned Result: ${decodedText}`;
+          tryAgainBtn.style.display = 'inline-block';
+          scanner.stop().then(() => {
+            document.getElementById(readerId).innerHTML = ""; // clear camera
+          });
+        },
+        (errorMessage) => {
+          // console.log(`Scan error: ${errorMessage}`);
+        }
+      ).catch((err) => {
+        resultElement.innerText = `❌ Error: ${err}`;
+      });
     }
 
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", 
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
-      },
-      false
-    );
+    tryAgainBtn.addEventListener('click', () => {
+      resultElement.innerText = 'Waiting for scan...';
+      tryAgainBtn.style.display = 'none';
+      startScanner();
+    });
 
-    html5QrcodeScanner.render(onScanSuccess);
+    // Start scanning when page loads
+    startScanner();
   </script>
 
 </body>
 </html>
-
