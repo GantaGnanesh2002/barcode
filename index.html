@@ -2,15 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Live Barcode Scanner</title>
+  <title>Smart Inventory Scanner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f2f2f2;
-      padding: 10px;
+      background: #f9f9f9;
       text-align: center;
+      padding: 10px;
+    }
+    #reader {
+      width: 100%;
+      max-width: 360px;
+      margin: 20px auto;
     }
     input, button {
       padding: 10px;
@@ -19,77 +24,103 @@
       max-width: 300px;
       font-size: 1rem;
     }
-    #reader {
-      width: 100%;
-      max-width: 360px;
-      margin: 20px auto;
-    }
     #result {
+      margin: 10px;
       font-weight: bold;
       color: green;
-      margin: 10px;
+    }
+    #formSection {
+      display: none;
     }
   </style>
 </head>
 <body>
 
-  <h2>📦 Inventory Scanner</h2>
+  <h2>📦 Inventory Barcode Scanner</h2>
   <div id="reader"></div>
-
   <input type="text" id="barcode" placeholder="Scanned Barcode" readonly><br>
-  <input type="text" id="itemName" placeholder="Item Name"><br>
-  <input type="text" id="scale" placeholder="Scale"><br>
-  <input type="text" id="department" placeholder="Department"><br>
 
-  <button onclick="addItem()">➕ Add Item</button>
-  <input type="password" id="deletePass" placeholder="Password for Delete">
+  <div id="formSection">
+    <input type="text" id="itemName" placeholder="Item Name"><br>
+    <input type="text" id="scale" placeholder="Scale"><br>
+    <input type="text" id="department" placeholder="Department"><br>
+    <button onclick="addItem()">➕ Add Item</button>
+  </div>
+
+  <input type="password" id="deletePass" placeholder="Enter Password to Delete">
   <button onclick="deleteItem()">🗑️ Delete Item</button>
 
-  <div id="result">Status messages here</div>
+  <div id="result">Scan a barcode...</div>
 
   <script>
-    const googleScriptURL = "https://script.google.com/macros/s/AKfycbxTLZ7Q7bO1DjLgDM7X6BIpkkj-8PAW_E2HFxtxcS-ZeVieBYx366bVuyiUpm-_xVhM/exec"; // replace this with your Apps Script web app URL
+    const scriptURL = "YOUR_SCRIPT_URL_HERE"; // Replace with your Apps Script web app URL
+
+    const barcodeField = document.getElementById('barcode');
+    const resultDiv = document.getElementById('result');
+    const formSection = document.getElementById('formSection');
 
     // Start QR/Barcode scanner
-    let scanner = new Html5Qrcode("reader");
+    const scanner = new Html5Qrcode("reader");
     scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
       (decodedText) => {
-        document.getElementById("barcode").value = decodedText;
-        scanner.stop();
+        scanner.stop(); // Stop after scan
+        barcodeField.value = decodedText;
+        checkBarcode(decodedText);
       });
 
-    // Add Item
+    // Check if barcode exists
+    function checkBarcode(code) {
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify({ action: "check", barcode: code })
+      })
+      .then(res => res.text())
+      .then(text => {
+        const data = JSON.parse(text);
+        if (data.found) {
+          resultDiv.innerHTML = `
+            ✅ Found:<br>
+            <strong>${data.itemName}</strong> | ${data.scale} | ${data.department}
+          `;
+          formSection.style.display = "none";
+        } else {
+          resultDiv.innerText = "🆕 Item not found. Please add details.";
+          formSection.style.display = "block";
+        }
+      });
+    }
+
+    // Add item
     function addItem() {
-      const data = {
+      const payload = {
         action: "add",
-        barcode: document.getElementById("barcode").value,
+        barcode: barcodeField.value,
         itemName: document.getElementById("itemName").value,
         scale: document.getElementById("scale").value,
         department: document.getElementById("department").value
       };
-      fetch(googleScriptURL, {
+      fetch(scriptURL, {
         method: 'POST',
-        body: JSON.stringify(data)
-      }).then(res => res.text()).then(msg => {
-        document.getElementById("result").innerText = msg;
-        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
-      });
+        body: JSON.stringify(payload)
+      }).then(res => res.text())
+        .then(msg => {
+          resultDiv.innerText = msg;
+          formSection.style.display = "none";
+        });
     }
 
-    // Delete Item
+    // Delete item
     function deleteItem() {
-      const data = {
-        action: "delete",
-        barcode: document.getElementById("barcode").value,
-        password: document.getElementById("deletePass").value
-      };
-      fetch(googleScriptURL, {
+      const password = document.getElementById("deletePass").value;
+      const barcode = barcodeField.value;
+      fetch(scriptURL, {
         method: 'POST',
-        body: JSON.stringify(data)
-      }).then(res => res.text()).then(msg => {
-        document.getElementById("result").innerText = msg;
-        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
-      });
+        body: JSON.stringify({ action: "delete", barcode: barcode, password: password })
+      }).then(res => res.text())
+        .then(msg => {
+          resultDiv.innerText = msg;
+          formSection.style.display = "none";
+        });
     }
   </script>
 
