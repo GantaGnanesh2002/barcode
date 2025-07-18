@@ -2,127 +2,169 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Smart Inventory Scanner</title>
+  <title>Order Scanner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f9f9f9;
-      text-align: center;
+      background: #f2f2f2;
       padding: 10px;
+      text-align: center;
     }
+
     #reader {
       width: 100%;
       max-width: 360px;
       margin: 20px auto;
     }
-    input, button {
+
+    .info-box {
+      margin: 10px auto;
       padding: 10px;
-      margin: 5px;
+      background: #fff;
+      border-radius: 10px;
       width: 90%;
-      max-width: 300px;
-      font-size: 1rem;
+      max-width: 400px;
+      box-shadow: 0 0 5px #aaa;
     }
-    #result {
-      margin: 10px;
-      font-weight: bold;
-      color: green;
+
+    .qty-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 10px 0;
     }
-    #formSection {
-      display: none;
+
+    .qty-controls button {
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+    }
+
+    #orderList {
+      text-align: left;
+      margin: 20px auto;
+      max-width: 400px;
+    }
+
+    .order-item {
+      background: #e0f7fa;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 8px;
+    }
+
+    .order-item span {
+      display: inline-block;
+      width: 70%;
+    }
+
+    .remove-btn {
+      float: right;
+      color: red;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-  <h2>📦 Inventory Barcode Scanner</h2>
+  <h2>📦 Order Scanner</h2>
   <div id="reader"></div>
-  <input type="text" id="barcode" placeholder="Scanned Barcode" readonly><br>
 
-  <div id="formSection">
-    <input type="text" id="itemName" placeholder="Item Name"><br>
-    <input type="text" id="scale" placeholder="Scale"><br>
-    <input type="text" id="department" placeholder="Department"><br>
-    <button onclick="addItem()">➕ Add Item</button>
+  <div class="info-box" id="itemInfo" style="display:none;">
+    <p><strong>Name:</strong> <span id="itemName"></span></p>
+    <p><strong>Scale:</strong> <span id="itemScale"></span></p>
+    <p><strong>Department:</strong> <span id="itemDept"></span></p>
+
+    <div class="qty-controls">
+      <button onclick="changeQty(-1)">−</button>
+      <span id="qty" style="margin: 0 15px; font-size: 1.2em;">1</span>
+      <button onclick="changeQty(1)">+</button>
+    </div>
+
+    <button onclick="addToOrder()">Add to Order</button>
   </div>
 
-  <input type="password" id="deletePass" placeholder="Enter Password to Delete">
-  <button onclick="deleteItem()">🗑️ Delete Item</button>
-
-  <div id="result">Scan a barcode...</div>
+  <h3>📝 Order List</h3>
+  <div id="orderList"></div>
 
   <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbwefMk6NcHzpN7Oje-Cv6HLnvbTe2M_dWMdoyiqy3by56nDkiifQ9K2cPegNm_TLLQK/exec"; // Replace with your Apps Script web app URL
+    const scriptURL = "https://script.google.com/macros/s/AKfycbxhHfMdg2G1VBfIQzzz1lGalCn_Xbp5RFyVUDQTTH1JReKRuEWAVJMeZcP7QZrqHvdk/exec"; // Replace with your Apps Script URL
 
-    const barcodeField = document.getElementById('barcode');
-    const resultDiv = document.getElementById('result');
-    const formSection = document.getElementById('formSection');
+    let currentBarcode = "";
+    let orderItems = [];
+    let currentQty = 1;
 
-    // Start QR/Barcode scanner
-    const scanner = new Html5Qrcode("reader");
-    scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
+    const reader = new Html5Qrcode("reader");
+
+    reader.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
       (decodedText) => {
-        scanner.stop(); // Stop after scan
-        barcodeField.value = decodedText;
+        reader.stop();
+        currentBarcode = decodedText;
         checkBarcode(decodedText);
       });
 
-    // Check if barcode exists
-    function checkBarcode(code) {
+    function checkBarcode(barcode) {
       fetch(scriptURL, {
         method: 'POST',
-        body: JSON.stringify({ action: "check", barcode: code })
+        body: JSON.stringify({ action: "check", barcode: barcode })
       })
       .then(res => res.text())
-      .then(text => {
-        const data = JSON.parse(text);
+      .then(txt => {
+        const data = JSON.parse(txt);
         if (data.found) {
-          resultDiv.innerHTML = `
-            ✅ Found:<br>
-            <strong>${data.itemName}</strong> | ${data.scale} | ${data.department}
-          `;
-          formSection.style.display = "none";
+          document.getElementById("itemName").innerText = data.itemName;
+          document.getElementById("itemScale").innerText = data.scale;
+          document.getElementById("itemDept").innerText = data.department;
+          document.getElementById("itemInfo").style.display = "block";
+          currentQty = 1;
+          document.getElementById("qty").innerText = currentQty;
         } else {
-          resultDiv.innerText = "🆕 Item not found. Please add details.";
-          formSection.style.display = "block";
+          alert("❌ Item not found in inventory list.");
+          reader.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
         }
       });
     }
 
-    // Add item
-    function addItem() {
-      const payload = {
-        action: "add",
-        barcode: barcodeField.value,
-        itemName: document.getElementById("itemName").value,
-        scale: document.getElementById("scale").value,
-        department: document.getElementById("department").value
-      };
-      fetch(scriptURL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      }).then(res => res.text())
-        .then(msg => {
-          resultDiv.innerText = msg;
-          formSection.style.display = "none";
-        });
+    function changeQty(change) {
+      currentQty = Math.max(1, Math.min(10, currentQty + change));
+      document.getElementById("qty").innerText = currentQty;
     }
 
-    // Delete item
-    function deleteItem() {
-      const password = document.getElementById("deletePass").value;
-      const barcode = barcodeField.value;
-      fetch(scriptURL, {
-        method: 'POST',
-        body: JSON.stringify({ action: "delete", barcode: barcode, password: password })
-      }).then(res => res.text())
-        .then(msg => {
-          resultDiv.innerText = msg;
-          formSection.style.display = "none";
-        });
+    function addToOrder() {
+      const name = document.getElementById("itemName").innerText;
+      const item = {
+        barcode: currentBarcode,
+        name: name,
+        qty: currentQty
+      };
+      orderItems.push(item);
+      updateOrderList();
+      document.getElementById("itemInfo").style.display = "none";
+      reader.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
+    }
+
+    function updateOrderList() {
+      const container = document.getElementById("orderList");
+      container.innerHTML = "";
+      orderItems.forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = "order-item";
+        div.innerHTML = `
+          <span>🔖 ${item.barcode} | ${item.name} × ${item.qty}</span>
+          <span class="remove-btn" onclick="removeItem(${index})">✖</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function removeItem(index) {
+      orderItems.splice(index, 1);
+      updateOrderList();
     }
   </script>
 
 </body>
 </html>
+
