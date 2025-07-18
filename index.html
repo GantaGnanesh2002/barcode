@@ -1,115 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <title>Live Barcode Scanner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mobile Barcode Scanner</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
-      margin: 0;
       font-family: Arial, sans-serif;
-      background: #f0f0f0;
+      background: #f2f2f2;
+      padding: 10px;
       text-align: center;
-      color: #333;
     }
-
-    h2 {
-      font-size: 1.8rem;
-      margin-top: 20px;
-      color: #004080;
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      width: 90%;
+      max-width: 300px;
+      font-size: 1rem;
     }
-
     #reader {
       width: 100%;
       max-width: 360px;
       margin: 20px auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
     }
-
     #result {
-      font-size: 1.3rem;
-      background: #e0ffe0;
-      color: #006600;
-      padding: 10px;
-      border-radius: 8px;
-      margin: 20px;
-      word-wrap: break-word;
-    }
-
-    #try-again {
-      display: none;
-      margin-top: 10px;
-      padding: 10px 20px;
-      font-size: 1rem;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #try-again:hover {
-      background-color: #0056b3;
-    }
-
-    @media (max-width: 480px) {
-      h2 {
-        font-size: 1.4rem;
-      }
-      #result {
-        font-size: 1.1rem;
-      }
-      #try-again {
-        font-size: 1rem;
-      }
+      font-weight: bold;
+      color: green;
+      margin: 10px;
     }
   </style>
 </head>
 <body>
 
-  <h2>📷 Scan Barcode / QR Code</h2>
+  <h2>📦 Inventory Scanner</h2>
   <div id="reader"></div>
-  <div id="result">Waiting for scan...</div>
-  <button id="try-again">🔄 Try Again</button>
+
+  <input type="text" id="barcode" placeholder="Scanned Barcode" readonly><br>
+  <input type="text" id="itemName" placeholder="Item Name"><br>
+  <input type="text" id="scale" placeholder="Scale"><br>
+  <input type="text" id="department" placeholder="Department"><br>
+
+  <button onclick="addItem()">➕ Add Item</button>
+  <input type="password" id="deletePass" placeholder="Password for Delete">
+  <button onclick="deleteItem()">🗑️ Delete Item</button>
+
+  <div id="result">Status messages here</div>
 
   <script>
-    const resultElement = document.getElementById('result');
-    const tryAgainBtn = document.getElementById('try-again');
-    const readerId = "reader";
+    const googleScriptURL = "https://script.google.com/macros/s/AKfycbxTLZ7Q7bO1DjLgDM7X6BIpkkj-8PAW_E2HFxtxcS-ZeVieBYx366bVuyiUpm-_xVhM/exec"; // replace this with your Apps Script web app URL
 
-    let scanner = null;
+    // Start QR/Barcode scanner
+    let scanner = new Html5Qrcode("reader");
+    scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        document.getElementById("barcode").value = decodedText;
+        scanner.stop();
+      });
 
-    function startScanner() {
-      scanner = new Html5Qrcode(readerId);
-      scanner.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        (decodedText, decodedResult) => {
-          resultElement.innerText = `✅ Scanned Result: ${decodedText}`;
-          tryAgainBtn.style.display = 'inline-block';
-          scanner.stop().then(() => {
-            document.getElementById(readerId).innerHTML = ""; // clear camera
-          });
-        },
-        (errorMessage) => {
-          // console.log(`Scan error: ${errorMessage}`);
-        }
-      ).catch((err) => {
-        resultElement.innerText = `❌ Error: ${err}`;
+    // Add Item
+    function addItem() {
+      const data = {
+        action: "add",
+        barcode: document.getElementById("barcode").value,
+        itemName: document.getElementById("itemName").value,
+        scale: document.getElementById("scale").value,
+        department: document.getElementById("department").value
+      };
+      fetch(googleScriptURL, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }).then(res => res.text()).then(msg => {
+        document.getElementById("result").innerText = msg;
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
       });
     }
 
-    tryAgainBtn.addEventListener('click', () => {
-      resultElement.innerText = 'Waiting for scan...';
-      tryAgainBtn.style.display = 'none';
-      startScanner();
-    });
-
-    // Start scanning when page loads
-    startScanner();
+    // Delete Item
+    function deleteItem() {
+      const data = {
+        action: "delete",
+        barcode: document.getElementById("barcode").value,
+        password: document.getElementById("deletePass").value
+      };
+      fetch(googleScriptURL, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }).then(res => res.text()).then(msg => {
+        document.getElementById("result").innerText = msg;
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
+      });
+    }
   </script>
 
 </body>
