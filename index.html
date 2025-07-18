@@ -9,14 +9,16 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
+      background: #f0f0f0;
       padding: 10px;
-      background: #f2f2f2;
     }
+
     #reader {
       width: 100%;
       max-width: 360px;
-      margin: 0 auto;
+      margin: 10px auto;
     }
+
     .section {
       background: white;
       padding: 15px;
@@ -25,6 +27,7 @@
       max-width: 400px;
       box-shadow: 0 0 8px rgba(0,0,0,0.1);
     }
+
     input, button {
       padding: 10px;
       margin: 5px;
@@ -32,22 +35,27 @@
       max-width: 300px;
       font-size: 1rem;
     }
+
     .qty-controls {
       display: flex;
       justify-content: center;
       align-items: center;
+      margin: 10px 0;
     }
+
     .qty-controls button {
       width: 40px;
       height: 40px;
       font-size: 20px;
     }
+
     .order-item {
       background: #e0f7fa;
       padding: 10px;
       margin: 5px 0;
       border-radius: 8px;
     }
+
     .remove-btn {
       float: right;
       color: red;
@@ -59,9 +67,10 @@
 
   <h2>📦 Inventory Order Scanner</h2>
   <div id="reader"></div>
+
   <input type="text" id="barcode" placeholder="Scanned Barcode" readonly><br>
 
-  <!-- Section if item FOUND -->
+  <!-- Item Found Section -->
   <div id="foundSection" class="section" style="display: none;">
     <p><strong>Name:</strong> <span id="itemName"></span></p>
     <p><strong>Scale:</strong> <span id="itemScale"></span></p>
@@ -76,21 +85,20 @@
     <button onclick="addToOrder()">➕ Add to Order</button>
   </div>
 
-  <!-- Section if item NOT found -->
+  <!-- Item Not Found Section -->
   <div id="notFoundSection" class="section" style="display: none;">
     <h4>🆕 Add New Item</h4>
     <input type="text" id="newItemName" placeholder="Item Name"><br>
     <input type="text" id="newScale" placeholder="Scale"><br>
     <input type="text" id="newDept" placeholder="Department"><br>
-    <button onclick="submitNewItem()">✅ Add Item to Sheet</button>
+    <button onclick="submitNewItem()">✅ Add to Sheet</button>
   </div>
 
-  <!-- Order List -->
   <h3>📝 Order List</h3>
   <div id="orderList"></div>
 
   <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbzRPTEwDJGAMm5BWzO_6pVlGt6wjrE_-YyP5p3FnZn_fcY2szRSuy7JKqBttXBd1XyI/exec"; // Replace this with your Web App URL
+    const scriptURL = "https://script.google.com/macros/s/AKfycbwpiJ9sAasKr5e6roDgCr1KSseTvSTJiyX8mnMcDvCz7aviifIOddaQ2_-a_AhMknUs/exec"; // ← Replace this
 
     let currentBarcode = "";
     let currentQty = 1;
@@ -105,16 +113,16 @@
         checkBarcode(decodedText);
       });
 
-    function checkBarcode(barcode) {
+    function checkBarcode(code) {
       fetch(scriptURL, {
         method: "POST",
-        body: JSON.stringify({ action: "check", barcode: barcode })
+        body: JSON.stringify({ action: "check", barcode: code })
       })
       .then(res => res.text())
       .then(txt => {
         const data = JSON.parse(txt);
         if (data.found) {
-          // Show quantity only if item is found
+          // Show found item section with quantity
           document.getElementById("itemName").innerText = data.itemName;
           document.getElementById("itemScale").innerText = data.scale;
           document.getElementById("itemDept").innerText = data.department;
@@ -123,9 +131,9 @@
           document.getElementById("foundSection").style.display = "block";
           document.getElementById("notFoundSection").style.display = "none";
         } else {
-          // Show add form if not found
-          document.getElementById("foundSection").style.display = "none";
+          // Show add new item form
           document.getElementById("notFoundSection").style.display = "block";
+          document.getElementById("foundSection").style.display = "none";
         }
       });
     }
@@ -136,10 +144,9 @@
     }
 
     function addToOrder() {
-      const name = document.getElementById("itemName").innerText;
       const item = {
         barcode: currentBarcode,
-        name: name,
+        name: document.getElementById("itemName").innerText,
         qty: currentQty
       };
       orderItems.push(item);
@@ -154,8 +161,10 @@
       orderItems.forEach((item, index) => {
         const div = document.createElement("div");
         div.className = "order-item";
-        div.innerHTML = `${item.barcode} | ${item.name} × ${item.qty} 
-          <span class="remove-btn" onclick="removeItem(${index})">✖</span>`;
+        div.innerHTML = `
+          ${item.barcode} | ${item.name} × ${item.qty}
+          <span class="remove-btn" onclick="removeItem(${index})">✖</span>
+        `;
         list.appendChild(div);
       });
     }
@@ -179,7 +188,7 @@
       })
       .then(res => res.text())
       .then(msg => {
-        alert("✅ Item added to inventory.");
+        alert("✅ Item added. Now scan again.");
         document.getElementById("notFoundSection").style.display = "none";
         reader.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
       });
@@ -188,4 +197,3 @@
 
 </body>
 </html>
-
