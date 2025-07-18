@@ -1,233 +1,296 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>📦 Inventory Order System</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #eef2f3;
-      margin: 0;
-      padding: 0;
-      text-align: center;
-    }
-
-    header {
-      background-color: #0a3d62;
-      color: white;
-      padding: 15px;
-      font-size: 1.5rem;
-    }
-
-    #reader {
-      margin: 20px auto;
-      max-width: 340px;
-      border: 3px solid #0a3d62;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    .container {
-      padding: 15px;
-      max-width: 500px;
-      margin: auto;
-    }
-
-    .section {
-      background: white;
-      padding: 15px;
-      margin: 15px 0;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
-    input, button {
-      padding: 10px;
-      margin: 8px 0;
-      width: 90%;
-      max-width: 320px;
-      font-size: 1rem;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      background-color: #0a3d62;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #065397;
-    }
-
-    .qty-controls {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 10px 0;
-    }
-
-    .qty-controls button {
-      width: 40px;
-      height: 40px;
-      font-size: 20px;
-      margin: 0 10px;
-    }
-
-    .order-item {
-      background: #dff9fb;
-      padding: 10px;
-      margin: 5px 0;
-      border-radius: 8px;
-      text-align: left;
-    }
-
-    .remove-btn {
-      float: right;
-      color: red;
-      font-weight: bold;
-      cursor: pointer;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Barcode Inventory & Order System</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    padding: 10px;
+    max-width: 450px;
+    margin: auto;
+    background: #f9f9f9;
+  }
+  #reader {
+    width: 100%;
+    margin-bottom: 15px;
+  }
+  .info, .add-item-form, .order-section, .delete-section {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+  }
+  label {
+    display: block;
+    margin-top: 8px;
+  }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 6px;
+    margin-top: 3px;
+    box-sizing: border-box;
+  }
+  button {
+    margin-top: 15px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 5px;
+    background-color: #2e86de;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  button:disabled {
+    background-color: #999;
+    cursor: not-allowed;
+  }
+  .qty-control {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .qty-control button {
+    width: 35px;
+    height: 35px;
+    font-size: 20px;
+    padding: 0;
+    margin-right: 8px;
+  }
+  .qty-control input {
+    width: 50px;
+    text-align: center;
+    font-size: 18px;
+    padding: 5px;
+  }
+  .status {
+    margin-top: 10px;
+    font-weight: bold;
+    min-height: 20px;
+  }
+  h2 {
+    margin-top: 0;
+  }
+</style>
 </head>
 <body>
 
-  <header>📦 Inventory Order System</header>
+<h2>Barcode Scanner Inventory & Order</h2>
 
-  <div id="reader"></div>
+<div id="reader"></div>
 
-  <div class="container">
-    <input type="text" id="barcode" placeholder="Scanned Barcode" readonly>
+<div class="status" id="status"></div>
 
-    <!-- FOUND Section -->
-    <div id="foundSection" class="section" style="display:none;">
-      <h3>Item Found ✅</h3>
-      <p><strong>Name:</strong> <span id="itemName"></span></p>
-      <p><strong>Scale:</strong> <span id="itemScale"></span></p>
-      <p><strong>Department:</strong> <span id="itemDept"></span></p>
+<div class="info" id="itemInfo" style="display:none;">
+  <h3>Item Found:</h3>
+  <p><b>Name:</b> <span id="itemName"></span></p>
+  <p><b>Scale:</b> <span id="itemScale"></span></p>
+  <p><b>Department:</b> <span id="itemDepartment"></span></p>
 
-      <div class="qty-controls">
-        <button onclick="changeQty(-1)">−</button>
-        <span id="qty" style="font-size: 1.2rem;">1</span>
-        <button onclick="changeQty(1)">+</button>
-      </div>
-
-      <button onclick="placeOrder()">📥 Add to Order</button>
+  <div class="order-section">
+    <label>Quantity:</label>
+    <div class="qty-control">
+      <button id="qtyMinus">−</button>
+      <input type="number" id="qtyInput" value="1" min="1" max="10" />
+      <button id="qtyPlus">+</button>
     </div>
-
-    <!-- NOT FOUND Section -->
-    <div id="notFoundSection" class="section" style="display:none;">
-      <h3>Item Not Found ❌</h3>
-      <input type="text" id="newItemName" placeholder="Item Name"><br>
-      <input type="text" id="newScale" placeholder="Scale"><br>
-      <input type="text" id="newDept" placeholder="Department"><br>
-      <button onclick="addNewItem()">➕ Add to Inventory</button>
-    </div>
-
-    <!-- ORDER LIST -->
-    <h3>📝 Order List</h3>
-    <div id="orderList" class="section"></div>
+    <button id="placeOrderBtn">Place Order</button>
   </div>
+</div>
 
-  <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbzFiWmeHTMMrYRlvl34p4IU99O-nFOIoEoA1kuBa-p7WwMxZT7-OP-V3k_3axji3yU/exec"; // Replace with your Apps Script URL
-    let currentBarcode = "";
-    let currentQty = 1;
-    let orderItems = [];
+<div class="add-item-form" id="addItemForm" style="display:none;">
+  <h3>Item Not Found - Add New Item</h3>
+  <label>Item Name:<input type="text" id="newItemName" /></label>
+  <label>Scale:<input type="text" id="newItemScale" /></label>
+  <label>Department:<input type="text" id="newItemDept" /></label>
+  <button id="addItemBtn">Add Item</button>
+</div>
 
-    const reader = new Html5Qrcode("reader");
-    reader.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
-      (decodedText) => {
-        reader.stop();
-        currentBarcode = decodedText;
-        document.getElementById("barcode").value = decodedText;
-        checkBarcode(decodedText);
-      });
+<div class="delete-section" id="deleteSection" style="display:none;">
+  <h3>Delete Item</h3>
+  <label>Enter Password to Delete:<input type="password" id="deletePassword" /></label>
+  <button id="deleteItemBtn">Delete Item</button>
+</div>
 
-    function checkBarcode(barcode) {
-      fetch(scriptURL, {
-        method: "POST",
-        body: JSON.stringify({ action: "check", barcode: barcode })
-      })
-      .then(res => res.text())
-      .then(txt => {
-        const data = JSON.parse(txt);
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+  const scriptUrl = 'https://script.google.com/macros/s/AKfycbxRbOdhO_o85iRU5chKkFP6i7iVcHFjBkyFiWz1Cy_NVBhtimZmhNMgH4Ax_fCok7s9/exec'; // Replace with your Web App URL
+
+  let currentBarcode = '';
+  let currentItem = null;
+
+  // Initialize QR code scanner
+  const html5QrCode = new Html5Qrcode("reader");
+
+  function showStatus(msg, isError = false) {
+    const status = document.getElementById('status');
+    status.style.color = isError ? 'red' : 'green';
+    status.textContent = msg;
+  }
+
+  function resetAll() {
+    currentBarcode = '';
+    currentItem = null;
+    document.getElementById('itemInfo').style.display = 'none';
+    document.getElementById('addItemForm').style.display = 'none';
+    document.getElementById('deleteSection').style.display = 'none';
+    showStatus('');
+  }
+
+  function scanSuccess(decodedText, decodedResult) {
+    // Stop scanning for now
+    html5QrCode.stop().then(() => {
+      resetAll();
+      currentBarcode = String(decodedText).trim();
+      showStatus(`Scanned: ${currentBarcode}`);
+
+      // Ask user if want to delete or check/add/order
+      // Simple prompt for delete or not
+      if (confirm("Delete this item? Click OK for delete, Cancel to check/add/order.")) {
+        // Show delete section
+        document.getElementById('deleteSection').style.display = 'block';
+      } else {
+        // Check barcode in Inventory
+        checkBarcode(currentBarcode);
+      }
+    }).catch(err => {
+      showStatus(`Error stopping scanner: ${err}`, true);
+    });
+  }
+
+  function checkBarcode(barcode) {
+    fetch(scriptUrl, {
+      method: 'POST',
+      body: JSON.stringify({action: "check", barcode}),
+    })
+      .then(res => res.json())
+      .then(data => {
         if (data.found) {
-          document.getElementById("itemName").innerText = data.itemName;
-          document.getElementById("itemScale").innerText = data.scale;
-          document.getElementById("itemDept").innerText = data.department;
-          currentQty = 1;
-          document.getElementById("qty").innerText = currentQty;
-          document.getElementById("foundSection").style.display = "block";
-          document.getElementById("notFoundSection").style.display = "none";
+          currentItem = data;
+          showItemInfo(data);
         } else {
-          document.getElementById("notFoundSection").style.display = "block";
-          document.getElementById("foundSection").style.display = "none";
+          showAddItemForm();
         }
+      })
+      .catch(err => {
+        showStatus('Error connecting to server: ' + err, true);
       });
-    }
+  }
 
-    function changeQty(change) {
-      currentQty = Math.max(1, Math.min(10, currentQty + change));
-      document.getElementById("qty").innerText = currentQty;
-    }
+  function showItemInfo(item) {
+    document.getElementById('itemName').textContent = item.itemName;
+    document.getElementById('itemScale').textContent = item.scale;
+    document.getElementById('itemDepartment').textContent = item.department;
+    document.getElementById('qtyInput').value = 1;
+    document.getElementById('qtyInput').max = 10;
+    document.getElementById('itemInfo').style.display = 'block';
+    document.getElementById('addItemForm').style.display = 'none';
+    document.getElementById('deleteSection').style.display = 'none';
+  }
 
-    function placeOrder() {
-      const payload = {
+  function showAddItemForm() {
+    document.getElementById('newItemName').value = '';
+    document.getElementById('newItemScale').value = '';
+    document.getElementById('newItemDept').value = '';
+    document.getElementById('itemInfo').style.display = 'none';
+    document.getElementById('addItemForm').style.display = 'block';
+    document.getElementById('deleteSection').style.display = 'none';
+  }
+
+  function placeOrder() {
+    const qty = Number(document.getElementById('qtyInput').value);
+    if (!qty || qty < 1 || qty > 10) {
+      alert("Quantity must be between 1 and 10");
+      return;
+    }
+    fetch(scriptUrl, {
+      method: 'POST',
+      body: JSON.stringify({
         action: "order",
         barcode: currentBarcode,
-        itemName: document.getElementById("itemName").innerText,
-        qty: currentQty
-      };
-      fetch(scriptURL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      }).then(res => res.text())
-        .then(msg => {
-          addToOrderList(payload);
-          alert("✅ Order placed successfully!");
-          resetAll();
-        });
+        itemName: currentItem.itemName,
+        qty: qty
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        showStatus(data.status);
+        resetAll();
+        startScanner();
+      })
+      .catch(err => {
+        showStatus('Error placing order: ' + err, true);
+      });
+  }
+
+  function addItem() {
+    const itemName = document.getElementById('newItemName').value.trim();
+    const scale = document.getElementById('newItemScale').value.trim();
+    const department = document.getElementById('newItemDept').value.trim();
+
+    if (!itemName || !scale || !department) {
+      alert("Please fill all item details");
+      return;
     }
 
-    function addToOrderList(item) {
-      orderItems.push(item);
-      const div = document.createElement("div");
-      div.className = "order-item";
-      div.innerHTML = `${item.barcode} | ${item.itemName} × ${item.qty}`;
-      document.getElementById("orderList").appendChild(div);
-    }
-
-    function addNewItem() {
-      const payload = {
+    fetch(scriptUrl, {
+      method: 'POST',
+      body: JSON.stringify({
         action: "add",
         barcode: currentBarcode,
-        itemName: document.getElementById("newItemName").value,
-        scale: document.getElementById("newScale").value,
-        department: document.getElementById("newDept").value
-      };
-      fetch(scriptURL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      }).then(res => res.text())
-        .then(msg => {
-          alert("✅ Item added to inventory.");
-          resetAll();
-        });
+        itemName,
+        scale,
+        department
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        showStatus(data.status);
+        resetAll();
+        startScanner();
+      })
+      .catch(err => {
+        showStatus('Error adding item: ' + err, true);
+      });
+  }
+
+  function deleteItem() {
+    const password = document.getElementById('deletePassword').value;
+    if (!password) {
+      alert("Please enter the password");
+      return;
     }
 
-    function resetAll() {
-      document.getElementById("barcode").value = "";
-      document.getElementById("foundSection").style.display = "none";
-      document.getElementById("notFoundSection").style.display = "none";
-      reader.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
-    }
-  </script>
+    fetch(scriptUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: "delete",
+        barcode: currentBarcode,
+        password: password
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        showStatus(data.status);
+        resetAll();
+        startScanner();
+      })
+      .catch(err => {
+        showStatus('Error deleting item: ' + err, true);
+      });
+  }
 
-</body>
-</html>
+  // Quantity buttons
+  document.getElementById('qtyPlus').addEventListener('click', () => {
+    const qtyInput = document.getElementById('qtyInput');
+    let val = Number(qtyInput.value);
+    if (val < 10) qtyInput.value = val + 1;
+  });
+
+  document.getElementById('qtyMinus').addEventListener('click', () => {
+    const qtyInput = document.getElementById('qtyInput');
+    let val = Number(qtyInput.
+
 
