@@ -1,348 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Barcode Scanner with Google Sheets</title>
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-<style>
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f0f2f5;
-    margin: 0; padding: 20px;
-    display: flex; flex-direction: column; align-items: center;
-  }
-  h1 {
-    color: #333;
-    margin-bottom: 10px;
-  }
-  #reader {
-    width: 320px;
-    margin: 20px auto;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
-  }
-  .info {
-    margin: 15px 0;
-    font-size: 1rem;
-    color: #222;
-  }
-  input, button {
-    font-size: 1rem;
-    padding: 10px 15px;
-    margin: 8px 0;
-    border-radius: 6px;
-    border: 1.5px solid #bbb;
-    width: 250px;
-    box-sizing: border-box;
-  }
-  input:focus {
-    border-color: #007bff;
-    outline: none;
-  }
-  button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  button:hover {
-    background-color: #0056b3;
-  }
-  #quantity {
-    width: 100px;
-    text-align: center;
-    font-weight: bold;
-  }
-  .qty-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-  }
-  .status {
-    margin-top: 10px;
-    font-weight: 600;
-  }
-  .password-input {
-    width: 150px;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Barcode Inventory Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+      text-align: center;
+    }
+    #reader {
+      width: 100%;
+      max-width: 360px;
+      margin: auto;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      width: 80%;
+      max-width: 300px;
+    }
+    button {
+      background: #007bff;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .section {
+      background: white;
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .qty-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .qty-controls input {
+      width: 50px;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
 
-<h1>Barcode Scanner & Order Manager</h1>
+<h2>📦 Barcode Inventory Scanner</h2>
 
 <div id="reader"></div>
 
-<div class="info" id="barcodeResult">Scan a barcode to begin</div>
+<div id="status">Waiting for scan...</div>
 
-<div id="itemDetails" style="display:none;">
-  <div><strong>Name:</strong> <span id="itemName"></span></div>
-  <div><strong>Scale:</strong> <span id="itemScale"></span></div>
-  <div><strong>Department:</strong> <span id="itemDepartment"></span></div>
+<div id="foundItem" class="section" style="display:none;">
+  <h3>Item Found</h3>
+  <p><strong>Name:</strong> <span id="itemName"></span></p>
+  <p><strong>Scale:</strong> <span id="itemScale"></span></p>
+  <p><strong>Department:</strong> <span id="itemDept"></span></p>
 
-  <div style="margin-top:10px;">
-    <label><strong>Quantity:</strong></label>
-    <div class="qty-controls">
-      <button id="qtyMinus">-</button>
-      <input type="text" id="quantity" value="1" readonly />
-      <button id="qtyPlus">+</button>
-    </div>
+  <div class="qty-controls">
+    <button onclick="changeQty(-1)">-</button>
+    <input id="quantity" type="number" value="1" min="1" max="10" readonly />
+    <button onclick="changeQty(1)">+</button>
   </div>
-
-  <button id="placeOrderBtn" style="margin-top:15px;">Place Order</button>
+  <button onclick="placeOrder()">Place Order</button>
+  <div style="margin-top:10px;">
+    <input id="deletePassword" type="password" placeholder="Delete password (6986)" />
+    <button onclick="deleteItem()">Delete Item</button>
+  </div>
 </div>
 
-<div id="addItemSection" style="display:none; margin-top:20px;">
-  <h3>Add New Item</h3>
-  <input type="text" id="newItemName" placeholder="Item Name" required />
-  <input type="text" id="newItemScale" placeholder="Scale" required />
-  <input type="text" id="newItemDept" placeholder="Department" required />
-  <button id="addItemBtn" style="margin-top:10px;">Add Item</button>
+<div id="newItemForm" class="section" style="display:none;">
+  <h3>Item Not Found - Add New</h3>
+  <input id="newName" type="text" placeholder="Item Name" /><br>
+  <input id="newScale" type="text" placeholder="Scale" /><br>
+  <input id="newDept" type="text" placeholder="Department" /><br>
+  <button onclick="addNewItem()">Add Item</button>
 </div>
-
-<div id="deleteItemSection" style="display:none; margin-top:20px;">
-  <h3>Delete Item</h3>
-  <input type="password" id="deletePassword" class="password-input" placeholder="Enter password" />
-  <button id="deleteItemBtn" style="margin-top:10px;">Delete Item</button>
-</div>
-
-<div class="status" id="statusMessage"></div>
 
 <script>
-  const googleAppsScriptURL = 'https://script.google.com/macros/s/AKfycbyoR5V0I09DfR3-K-d0RUNeCGJe84Rz5Rp9ymeU0C716WtJ6JDsbOurcBGwHWJ--cU1/exec'; // Replace this with your actual Google Apps Script URL
+const scriptURL = 'https://script.google.com/macros/s/AKfycbw8d4Ja93pNGr-avHL9UOE-goVchWyNFLXlwj9AzfHuqDVYJQMD1wkTnNJBn4SDjMCy/exec'; // <-- Replace this
 
-  const html5QrCode = new Html5Qrcode("reader");
-  let currentBarcode = null;
-  let currentItem = null;
-  let quantity = 1;
+let currentBarcode = '';
+let currentItem = null;
 
-  function showStatus(message, isError = false) {
-    const statusEl = document.getElementById('statusMessage');
-    statusEl.textContent = message;
-    statusEl.style.color = isError ? 'red' : 'green';
-  }
+function showStatus(msg, error = false) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.style.color = error ? 'red' : 'green';
+}
 
-  function resetAll() {
-    currentBarcode = null;
-    currentItem = null;
-    quantity = 1;
-    document.getElementById('barcodeResult').textContent = "Scan a barcode to begin";
-    document.getElementById('itemDetails').style.display = 'none';
-    document.getElementById('addItemSection').style.display = 'none';
-    document.getElementById('deleteItemSection').style.display = 'none';
-    document.getElementById('quantity').value = 1;
-    document.getElementById('newItemName').value = '';
-    document.getElementById('newItemScale').value = '';
-    document.getElementById('newItemDept').value = '';
-    document.getElementById('deletePassword').value = '';
-    showStatus('');
-  }
+function resetUI() {
+  currentBarcode = '';
+  currentItem = null;
+  document.getElementById('foundItem').style.display = 'none';
+  document.getElementById('newItemForm').style.display = 'none';
+  showStatus('Waiting for scan...');
+}
 
-  function updateQuantityDisplay() {
-    document.getElementById('quantity').value = quantity;
-  }
+function scanSuccess(decodedText) {
+  if (decodedText === currentBarcode) return;
+  currentBarcode = decodedText;
+  showStatus(`Scanned: ${currentBarcode}`);
+  checkItem();
+  html5QrCode.stop(); // stop scanning while interacting
+}
 
-  document.getElementById('qtyPlus').addEventListener('click', () => {
-    if (quantity < 10) {
-      quantity++;
-      updateQuantityDisplay();
-    }
-  });
+function checkItem() {
+  fetch(`${scriptURL}?barcode=${encodeURIComponent(currentBarcode)}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.found) {
+        currentItem = data.item;
+        document.getElementById('itemName').textContent = currentItem.name;
+        document.getElementById('itemScale').textContent = currentItem.scale;
+        document.getElementById('itemDept').textContent = currentItem.department;
+        document.getElementById('quantity').value = 1;
+        document.getElementById('foundItem').style.display = 'block';
+        document.getElementById('newItemForm').style.display = 'none';
+      } else {
+        document.getElementById('foundItem').style.display = 'none';
+        document.getElementById('newItemForm').style.display = 'block';
+      }
+    })
+    .catch(err => {
+      showStatus('Error: ' + err, true);
+    });
+}
 
-  document.getElementById('qtyMinus').addEventListener('click', () => {
-    if (quantity > 1) {
-      quantity--;
-      updateQuantityDisplay();
-    }
-  });
+function changeQty(change) {
+  const qty = document.getElementById('quantity');
+  let value = parseInt(qty.value) + change;
+  if (value >= 1 && value <= 10) qty.value = value;
+}
 
-  async function scanSuccess(decodedText, decodedResult) {
-    if (decodedText === currentBarcode) {
-      // Same barcode scanned again, ignore
-      return;
-    }
-
-    currentBarcode = decodedText;
-    resetUIForBarcode(decodedText);
-  }
-
-  function resetUIForBarcode(barcode) {
-    document.getElementById('barcodeResult').textContent = `Scanned Barcode: ${barcode}`;
-    document.getElementById('itemDetails').style.display = 'none';
-    document.getElementById('addItemSection').style.display = 'none';
-    document.getElementById('deleteItemSection').style.display = 'none';
-    showStatus('Checking item in database...');
-
-    // Check in Google Sheets via Apps Script
-    fetch(googleAppsScriptURL + '?action=checkItem&barcode=' + encodeURIComponent(barcode))
-      .then(response => response.json())
-      .then(data => {
-        if (data.found) {
-          currentItem = data.item;
-          showStatus('Item found! You can place order or delete item.');
-          showItemDetails(currentItem);
-          document.getElementById('deleteItemSection').style.display = 'block';
-        } else {
-          currentItem = null;
-          showStatus('Item not found. Please add item details.');
-          document.getElementById('addItemSection').style.display = 'block';
-        }
-      })
-      .catch(err => {
-        showStatus('Error connecting to database: ' + err.message, true);
-      });
-  }
-
-  function showItemDetails(item) {
-    document.getElementById('itemName').textContent = item.name;
-    document.getElementById('itemScale').textContent = item.scale;
-    document.getElementById('itemDepartment').textContent = item.department;
-    quantity = 1;
-    updateQuantityDisplay();
-    document.getElementById('itemDetails').style.display = 'block';
-  }
-
-  // Place Order
-  document.getElementById('placeOrderBtn').addEventListener('click', () => {
-    if (!currentItem || !currentBarcode) {
-      showStatus('No item selected to place order.', true);
-      return;
-    }
-
-    const orderData = {
+function placeOrder() {
+  const quantity = parseInt(document.getElementById('quantity').value);
+  fetch(scriptURL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'placeOrder',
       barcode: currentBarcode,
       name: currentItem.name,
       scale: currentItem.scale,
       department: currentItem.department,
       quantity: quantity
-    };
-
-    fetch(googleAppsScriptURL + '?action=placeOrder', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(orderData)
-    }).then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          showStatus('Order placed successfully!');
-          resetAll();
-        } else {
-          showStatus('Failed to place order: ' + data.message, true);
-        }
-      })
-      .catch(err => {
-        showStatus('Error placing order: ' + err.message, true);
-      });
-  });
-
-  // Add New Item
-  document.getElementById('addItemBtn').addEventListener('click', () => {
-    const name = document.getElementById('newItemName').value.trim();
-    const scale = document.getElementById('newItemScale').value.trim();
-    const department = document.getElementById('newItemDept').value.trim();
-
-    if (!name || !scale || !department) {
-      showStatus('Please fill all item details to add.', true);
-      return;
-    }
-
-    const newItemData = {
-      barcode: currentBarcode,
-      name,
-      scale,
-      department
-    };
-
-    fetch(googleAppsScriptURL + '?action=addItem', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(newItemData)
-    }).then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          showStatus('Item added successfully!');
-          resetAll();
-        } else {
-          showStatus('Failed to add item: ' + data.message, true);
-        }
-      })
-      .catch(err => {
-        showStatus('Error adding item: ' + err.message, true);
-      });
-  });
-
-  // Delete Item
-  document.getElementById('deleteItemBtn').addEventListener('click', () => {
-    const password = document.getElementById('deletePassword').value.trim();
-    if (password !== '6986') {
-      showStatus('Incorrect password to delete item.', true);
-      return;
-    }
-    if (!currentBarcode) {
-      showStatus('No item selected to delete.', true);
-      return;
-    }
-
-    fetch(googleAppsScriptURL + '?action=deleteItem', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({barcode: currentBarcode})
-    }).then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          showStatus('Item deleted successfully!');
-          resetAll();
-        } else {
-          showStatus('Failed to delete item: ' + data.message, true);
-        }
-      })
-      .catch(err => {
-        showStatus('Error deleting item: ' + err.message, true);
-      });
-  });
-
-  // Select back camera and start scanner
-  function startScanner() {
-    Html5Qrcode.getCameras().then(devices => {
-      if (devices && devices.length) {
-        let backCamera = devices.find(camera =>
-          camera.label.toLowerCase().includes('back') ||
-          camera.label.toLowerCase().includes('rear') ||
-          camera.label.toLowerCase().includes('environment')
-        );
-        const cameraId = backCamera ? backCamera.id : devices[0].id;
-
-        html5QrCode.start(
-          cameraId,
-          { fps: 10, qrbox: {width: 250, height: 250} },
-          scanSuccess,
-          errorMessage => {
-            // Can log errors here if you want
-          }
-        ).catch(err => {
-          showStatus('Unable to start scanner: ' + err, true);
-        });
-      } else {
-        showStatus('No cameras found.', true);
-      }
-    }).catch(err => {
-      showStatus('Error getting cameras: ' + err, true);
-    });
-  }
-
-  window.onload = () => {
-    resetAll();
+    }),
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(res => res.json())
+  .then(data => {
+    showStatus(data.message);
+    resetUI();
     startScanner();
-  };
+  });
+}
+
+function addNewItem() {
+  const name = document.getElementById('newName').value.trim();
+  const scale = document.getElementById('newScale').value.trim();
+  const department = document.getElementById('newDept').value.trim();
+  if (!name || !scale || !department) {
+    showStatus('Fill all fields.', true); return;
+  }
+  fetch(scriptURL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'addItem',
+      barcode: currentBarcode,
+      name, scale, department
+    }),
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(res => res.json())
+  .then(data => {
+    showStatus(data.message);
+    resetUI();
+    startScanner();
+  });
+}
+
+function deleteItem() {
+  const password = document.getElementById('deletePassword').value;
+  if (password !== '6986') {
+    showStatus('Wrong password.', true); return;
+  }
+  fetch(scriptURL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'deleteItem',
+      barcode: currentBarcode,
+      password: password
+    }),
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(res => res.json())
+  .then(data => {
+    showStatus(data.message);
+    resetUI();
+    startScanner();
+  });
+}
+
+// Camera setup (back cam preferred)
+const html5QrCode = new Html5Qrcode("reader");
+
+function startScanner() {
+  Html5Qrcode.getCameras().then(devices => {
+    const backCam = devices.find(cam =>
+      cam.label.toLowerCase().includes('back') ||
+      cam.label.toLowerCase().includes('rear') ||
+      cam.label.toLowerCase().includes('environment')
+    );
+    const camId = backCam ? backCam.id : devices[0].id;
+    html5QrCode.start(
+      camId,
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      scanSuccess
+    );
+  }).catch(err => {
+    showStatus('Camera error: ' + err, true);
+  });
+}
+
+window.onload = () => {
+  resetUI();
+  startScanner();
+};
 </script>
 
 </body>
 </html>
-
-
-
-
