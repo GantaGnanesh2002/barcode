@@ -1,40 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Barcode Order App</title>
-
-  <!-- Tailwind CSS CDN -->
+  <title>📦 Barcode Order App</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- html5-qrcode -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
-  <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 p-6">
+<body class="bg-gray-50 text-gray-800 p-4 sm:p-6">
 
-  <h1 class="text-2xl font-bold mb-4">📦 Barcode Order App</h1>
+  <h1 class="text-2xl sm:text-3xl font-bold mb-4 text-center">📦 Barcode Order App</h1>
 
   <!-- Barcode Scanner -->
-  <div id="reader" class="mb-4"></div>
+  <div id="reader" class="mx-auto mb-6 w-full max-w-md"></div>
 
-  <!-- Item Details -->
-  <div id="item-details" class="bg-white p-4 rounded shadow-md mb-4 hidden">
-    <h2 id="item-name" class="text-xl font-semibold"></h2>
-    <img id="item-image" src="" class="w-32 my-2" />
-    <input id="item-qty" type="number" min="1" value="1" class="border p-2 mr-2 w-20" />
-    <button onclick="addToOrder()" class="bg-blue-500 text-white px-4 py-2 rounded">Add to Order</button>
+  <!-- Item Details Card -->
+  <div id="item-details" class="hidden bg-white rounded-lg shadow p-4 mb-4 max-w-md mx-auto">
+    <h2 id="item-name" class="text-xl font-semibold mb-2"></h2>
+    <img id="item-image" src="" class="w-24 h-auto mb-2 rounded border"/>
+    <p id="item-scale" class="text-sm text-gray-600 mb-2"></p>
+    <div class="flex items-center gap-2">
+      <input id="item-qty" type="number" min="1" value="1"
+             class="border p-2 rounded w-20 text-center text-lg"/>
+      <button onclick="addToOrder()" class="bg-blue-600 text-white rounded px-4 py-2 w-full sm:w-auto">
+        ➕ Add to Order
+      </button>
+    </div>
   </div>
 
   <!-- Order List -->
-  <div class="bg-white p-4 rounded shadow-md">
-    <h2 class="text-lg font-semibold mb-2">📝 Order List</h2>
-    <div id="order-list"></div>
-    <button onclick="generatePDF()" id="finish-order" class="mt-4 bg-green-600 text-white px-4 py-2 rounded hidden">
-      Finish Order & Download PDF
+  <div class="bg-white rounded-lg shadow p-4 max-w-md mx-auto">
+    <h2 class="text-lg font-bold mb-2">📝 Current Order</h2>
+    <div id="order-list" class="space-y-3"></div>
+    <button onclick="generatePDF()" id="finish-order"
+            class="mt-4 hidden w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+      ✅ Finish Order & Download PDF
     </button>
   </div>
 
@@ -46,30 +47,33 @@
       fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
         .then(res => res.json())
         .then(data => {
-          const item = data.status === 1 ? data.product : {};
+          let product = data.status === 1 ? data.product : {};
           currentItem = {
-            name: item.product_name || "Unknown Product",
-            image: item.image_front_url || "",
             barcode,
+            name: product.product_name || "Unknown Product",
+            image: product.image_front_url || "",
+            scale: product.quantity || product.product_quantity + "g" || "N/A"
           };
           showItemDetails();
         })
         .catch(() => {
-          currentItem = { name: "Unknown Product", image: "", barcode };
+          currentItem = {
+            barcode,
+            name: "Unknown Product",
+            image: "",
+            scale: "N/A"
+          };
           showItemDetails();
         });
     }
 
     function showItemDetails() {
-      document.getElementById("item-details").classList.remove("hidden");
       document.getElementById("item-name").textContent = currentItem.name;
+      document.getElementById("item-scale").textContent = `Scale: ${currentItem.scale}`;
       const img = document.getElementById("item-image");
-      if (currentItem.image) {
-        img.src = currentItem.image;
-        img.classList.remove("hidden");
-      } else {
-        img.classList.add("hidden");
-      }
+      img.src = currentItem.image || "";
+      img.classList.toggle("hidden", !currentItem.image);
+      document.getElementById("item-details").classList.remove("hidden");
     }
 
     function addToOrder() {
@@ -82,21 +86,20 @@
     }
 
     function renderOrderList() {
-      const listDiv = document.getElementById("order-list");
-      listDiv.innerHTML = "";
-      orderList.forEach((item, idx) => {
-        listDiv.innerHTML += `
-          <div class="flex justify-between border-b py-2">
+      const list = document.getElementById("order-list");
+      list.innerHTML = "";
+      orderList.forEach((item, index) => {
+        list.innerHTML += `
+          <div class="flex justify-between items-center border-b pb-2">
             <div>
-              <p>${idx + 1}. ${item.name}</p>
-              <p class="text-sm text-gray-600">Qty: ${item.quantity}</p>
+              <p class="font-medium">${index + 1}. ${item.name}</p>
+              <p class="text-sm text-gray-500">Qty: ${item.quantity} | ${item.scale}</p>
             </div>
-            ${item.image ? `<img src="${item.image}" class="w-12 h-12" />` : ""}
-          </div>`;
+            ${item.image ? `<img src="${item.image}" class="w-12 h-12 rounded border" />` : ""}
+          </div>
+        `;
       });
-      if (orderList.length > 0) {
-        document.getElementById("finish-order").classList.remove("hidden");
-      }
+      document.getElementById("finish-order").classList.toggle("hidden", orderList.length === 0);
     }
 
     async function generatePDF() {
@@ -106,6 +109,7 @@
       doc.setFontSize(18);
       doc.text("Order Summary", 20, y);
       y += 10;
+
       doc.setFontSize(12);
       doc.text(`Date: ${new Date().toLocaleString()}`, 20, y);
       y += 10;
@@ -113,19 +117,20 @@
       let totalItems = 0;
       orderList.forEach((item, i) => {
         doc.text(`${i + 1}. ${item.name}`, 20, y);
-        doc.text(`Qty: ${item.quantity}`, 150, y);
+        doc.text(`Qty: ${item.quantity} | ${item.scale}`, 130, y);
         totalItems += item.quantity;
         y += 10;
       });
 
-      doc.text(`Total Items: ${totalItems}`, 20, y + 10);
+      y += 10;
+      doc.text(`Total Items: ${totalItems}`, 20, y);
       doc.save("order-summary.pdf");
     }
 
-    new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 })
-      .render((text) => {
-        fetchItem(text);
-      });
+    // Initialize barcode scanner
+    new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }).render((barcode) => {
+      fetchItem(barcode);
+    });
   </script>
 </body>
 </html>
