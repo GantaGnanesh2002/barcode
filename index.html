@@ -1,331 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Barcode Ordering App</title>
-<style>
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0; padding: 0; background: #f0f2f5;
-    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
-  }
-  header {
-    background: #004aad; color: white; width: 100%; padding: 15px; text-align: center;
-    font-size: 1.5rem; font-weight: bold;
-  }
-  main {
-    padding: 20px; max-width: 480px; width: 100%;
-    background: white; box-shadow: 0 0 15px rgba(0,0,0,0.1); margin-top: 20px;
-    border-radius: 8px;
-  }
-  #reader {
-    width: 100%;
-    margin-bottom: 15px;
-  }
-  label {
-    display: block; margin-top: 10px; font-weight: 600;
-  }
-  input[type=text], input[type=number], select {
-    width: 100%; padding: 8px; margin-top: 5px;
-    box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc;
-    font-size: 1rem;
-  }
-  button {
-    margin-top: 15px; padding: 12px; width: 100%;
-    font-size: 1.1rem; font-weight: 600;
-    border: none; border-radius: 5px; cursor: pointer;
-    background-color: #004aad; color: white;
-    transition: background-color 0.3s ease;
-  }
-  button:hover {
-    background-color: #00337f;
-  }
-  .hidden {
-    display: none;
-  }
-  .message {
-    margin: 10px 0; font-weight: 600; color: #444;
-  }
-  .error {
-    color: red;
-  }
-  .success {
-    color: green;
-  }
-  #quantityControl {
-    display: flex;
-    align-items: center;
-    margin-top: 10px;
-  }
-  #quantityControl button {
-    width: 40px;
-    font-size: 1.5rem;
-    padding: 5px 0;
-    margin: 0 10px;
-    background-color: #007bff;
-  }
-  #quantityDisplay {
-    font-weight: 700;
-    font-size: 1.2rem;
-    width: 30px;
-    text-align: center;
-  }
-</style>
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Barcode Order App</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- html5-qrcode -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-<body>
+<body class="bg-gray-100 text-gray-800 p-6">
 
-<header>Barcode Ordering App</header>
+  <h1 class="text-2xl font-bold mb-4">📦 Barcode Order App</h1>
 
-<main>
-  <div id="reader" style="width: 100%;"></div>
-  
-  <div id="result" class="message"></div>
+  <!-- Barcode Scanner -->
+  <div id="reader" class="mb-4"></div>
 
-  <!-- If item found, show order form -->
-  <div id="orderForm" class="hidden">
-    <label>Item Name:</label>
-    <input type="text" id="itemName" readonly />
-    
-    <label>Scale:</label>
-    <input type="text" id="itemScale" readonly />
-    
-    <label>Department:</label>
-    <input type="text" id="itemDept" readonly />
-    
-    <label>Quantity:</label>
-    <div id="quantityControl">
-      <button id="qtyMinus">-</button>
-      <div id="quantityDisplay">1</div>
-      <button id="qtyPlus">+</button>
-    </div>
-    
-    <button id="placeOrderBtn">Place Order</button>
-  </div>
-  
-  <!-- If item not found, show add item form -->
-  <div id="addItemForm" class="hidden">
-    <label>Barcode:</label>
-    <input type="text" id="newBarcode" readonly />
-    
-    <label>Item Name:</label>
-    <input type="text" id="newName" placeholder="Enter item name" />
-    
-    <label>Scale:</label>
-    <input type="text" id="newScale" placeholder="Enter scale" />
-    
-    <label>Department:</label>
-    <input type="text" id="newDept" placeholder="Enter department" />
-    
-    <button id="addItemBtn">Add Item</button>
+  <!-- Item Details -->
+  <div id="item-details" class="bg-white p-4 rounded shadow-md mb-4 hidden">
+    <h2 id="item-name" class="text-xl font-semibold"></h2>
+    <img id="item-image" src="" class="w-32 my-2" />
+    <input id="item-qty" type="number" min="1" value="1" class="border p-2 mr-2 w-20" />
+    <button onclick="addToOrder()" class="bg-blue-500 text-white px-4 py-2 rounded">Add to Order</button>
   </div>
 
-  <!-- Delete item -->
-  <div id="deleteSection" class="hidden">
-    <label>Delete Item Password:</label>
-    <input type="password" id="deletePass" placeholder="Enter password to delete" />
-    <button id="deleteItemBtn">Delete Item</button>
+  <!-- Order List -->
+  <div class="bg-white p-4 rounded shadow-md">
+    <h2 class="text-lg font-semibold mb-2">📝 Order List</h2>
+    <div id="order-list"></div>
+    <button onclick="generatePDF()" id="finish-order" class="mt-4 bg-green-600 text-white px-4 py-2 rounded hidden">
+      Finish Order & Download PDF
+    </button>
   </div>
 
-  <button id="tryAgainBtn" class="hidden" style="margin-top: 15px; background-color:#6c757d;">Try Again</button>
-  
-  <div id="messageBox" class="message"></div>
-</main>
+  <script>
+    let currentItem = null;
+    let orderList = [];
 
-<script>
-  const backendURL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec'; // <-- Replace with your Apps Script URL
+    function fetchItem(barcode) {
+      fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
+        .then(res => res.json())
+        .then(data => {
+          const item = data.status === 1 ? data.product : {};
+          currentItem = {
+            name: item.product_name || "Unknown Product",
+            image: item.image_front_url || "",
+            barcode,
+          };
+          showItemDetails();
+        })
+        .catch(() => {
+          currentItem = { name: "Unknown Product", image: "", barcode };
+          showItemDetails();
+        });
+    }
 
-  let lastScannedBarcode = "";
-  let quantity = 1;
+    function showItemDetails() {
+      document.getElementById("item-details").classList.remove("hidden");
+      document.getElementById("item-name").textContent = currentItem.name;
+      const img = document.getElementById("item-image");
+      if (currentItem.image) {
+        img.src = currentItem.image;
+        img.classList.remove("hidden");
+      } else {
+        img.classList.add("hidden");
+      }
+    }
 
-  const resultDiv = document.getElementById('result');
-  const orderForm = document.getElementById('orderForm');
-  const addItemForm = document.getElementById('addItemForm');
-  const deleteSection = document.getElementById('deleteSection');
-  const messageBox = document.getElementById('messageBox');
-  const tryAgainBtn = document.getElementById('tryAgainBtn');
+    function addToOrder() {
+      const qty = parseInt(document.getElementById("item-qty").value);
+      if (!qty || qty <= 0) return;
+      orderList.push({ ...currentItem, quantity: qty });
+      currentItem = null;
+      document.getElementById("item-details").classList.add("hidden");
+      renderOrderList();
+    }
 
-  // Quantity elements
-  const qtyMinus = document.getElementById('qtyMinus');
-  const qtyPlus = document.getElementById('qtyPlus');
-  const quantityDisplay = document.getElementById('quantityDisplay');
-
-  // Order form inputs
-  const itemNameInput = document.getElementById('itemName');
-  const itemScaleInput = document.getElementById('itemScale');
-  const itemDeptInput = document.getElementById('itemDept');
-  const placeOrderBtn = document.getElementById('placeOrderBtn');
-
-  // Add item inputs
-  const newBarcodeInput = document.getElementById('newBarcode');
-  const newNameInput = document.getElementById('newName');
-  const newScaleInput = document.getElementById('newScale');
-  const newDeptInput = document.getElementById('newDept');
-  const addItemBtn = document.getElementById('addItemBtn');
-
-  // Delete section inputs
-  const deletePassInput = document.getElementById('deletePass');
-  const deleteItemBtn = document.getElementById('deleteItemBtn');
-
-  // Reset UI to initial state
-  function resetUI(){
-    resultDiv.textContent = "";
-    messageBox.textContent = "";
-    orderForm.classList.add('hidden');
-    addItemForm.classList.add('hidden');
-    deleteSection.classList.add('hidden');
-    tryAgainBtn.classList.add('hidden');
-    quantity = 1;
-    quantityDisplay.textContent = quantity;
-  }
-
-  // Show error message
-  function showError(msg){
-    messageBox.textContent = msg;
-    messageBox.classList.remove('success');
-    messageBox.classList.add('error');
-  }
-
-  // Show success message
-  function showSuccess(msg){
-    messageBox.textContent = msg;
-    messageBox.classList.remove('error');
-    messageBox.classList.add('success');
-  }
-
-  // POST helper
-  async function postData(data) {
-    try {
-      const response = await fetch(backendURL, {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: {'Content-Type': 'application/json'}
+    function renderOrderList() {
+      const listDiv = document.getElementById("order-list");
+      listDiv.innerHTML = "";
+      orderList.forEach((item, idx) => {
+        listDiv.innerHTML += `
+          <div class="flex justify-between border-b py-2">
+            <div>
+              <p>${idx + 1}. ${item.name}</p>
+              <p class="text-sm text-gray-600">Qty: ${item.quantity}</p>
+            </div>
+            ${item.image ? `<img src="${item.image}" class="w-12 h-12" />` : ""}
+          </div>`;
       });
-      return await response.json();
-    } catch (err) {
-      showError("Network error: " + err.message);
-      return null;
+      if (orderList.length > 0) {
+        document.getElementById("finish-order").classList.remove("hidden");
+      }
     }
-  }
 
-  // On barcode scanned
-  async function onScanSuccess(decodedText, decodedResult) {
-    if (decodedText === lastScannedBarcode) return; // ignore duplicates
-    lastScannedBarcode = decodedText;
+    async function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 10;
+      doc.setFontSize(18);
+      doc.text("Order Summary", 20, y);
+      y += 10;
+      doc.setFontSize(12);
+      doc.text(`Date: ${new Date().toLocaleString()}`, 20, y);
+      y += 10;
 
-    resetUI();
-    resultDiv.textContent = `Scanned Barcode: ${decodedText}`;
+      let totalItems = 0;
+      orderList.forEach((item, i) => {
+        doc.text(`${i + 1}. ${item.name}`, 20, y);
+        doc.text(`Qty: ${item.quantity}`, 150, y);
+        totalItems += item.quantity;
+        y += 10;
+      });
 
-    // Check if barcode exists in DB
-    let res = await postData({action:"check", barcode: decodedText});
-    if(!res){
-      showError("Error connecting to backend.");
-      tryAgainBtn.classList.remove('hidden');
-      return;
+      doc.text(`Total Items: ${totalItems}`, 20, y + 10);
+      doc.save("order-summary.pdf");
     }
-    if(res.found){
-      // Show order form with details
-      itemNameInput.value = res.name;
-      itemScaleInput.value = res.scale;
-      itemDeptInput.value = res.department;
-      orderForm.classList.remove('hidden');
-      deleteSection.classList.remove('hidden');
-    } else {
-      // Show add item form
-      newBarcodeInput.value = decodedText;
-      addItemForm.classList.remove('hidden');
-      tryAgainBtn.classList.remove('hidden');
-    }
-  }
 
-  // Quantity controls
-  qtyMinus.onclick = () => {
-    if(quantity > 1){
-      quantity--;
-      quantityDisplay.textContent = quantity;
-    }
-  };
-  qtyPlus.onclick = () => {
-    quantity++;
-    quantityDisplay.textContent = quantity;
-  };
-
-  // Place order button click
-  placeOrderBtn.onclick = async () => {
-    let order = {
-      barcode: lastScannedBarcode,
-      name: itemNameInput.value,
-      scale: itemScaleInput.value,
-      department: itemDeptInput.value,
-      quantity: quantity
-    };
-    let res = await postData({action:"order", order: order});
-    if(res && res.success){
-      showSuccess("Order placed successfully!");
-      orderForm.classList.add('hidden');
-      deleteSection.classList.add('hidden');
-      tryAgainBtn.classList.remove('hidden');
-    } else {
-      showError("Failed to place order.");
-    }
-  };
-
-  // Add item button click
-  addItemBtn.onclick = async () => {
-    let newItem = {
-      barcode: newBarcodeInput.value.trim(),
-      name: newNameInput.value.trim(),
-      scale: newScaleInput.value.trim(),
-      department: newDeptInput.value.trim()
-    };
-    if(!newItem.name || !newItem.scale || !newItem.department){
-      showError("Please fill all fields to add item.");
-      return;
-    }
-    let res = await postData({action:"add", item: newItem});
-    if(res && res.success){
-      showSuccess("Item added successfully! Now scan again to order.");
-      addItemForm.classList.add('hidden');
-      tryAgainBtn.classList.remove('hidden');
-    } else {
-      showError(res.message || "Failed to add item.");
-    }
-  };
-
-  // Delete item button click
-  deleteItemBtn.onclick = async () => {
-    let password = deletePassInput.value;
-    if(!password){
-      showError("Enter password to delete.");
-      return;
-    }
-    let res = await postData({action:"delete", barcode: lastScannedBarcode, password: password});
-    if(res && res.success){
-      showSuccess("Item deleted successfully.");
-      orderForm.classList.add('hidden');
-      deleteSection.classList.add('hidden');
-      tryAgainBtn.classList.remove('hidden');
-    } else {
-      showError(res.message || "Failed to delete item.");
-    }
-  };
-
-  // Try again button click (reset)
-  tryAgainBtn.onclick = () => {
-    resetUI();
-    lastScannedBarcode = "";
-  };
-
-  // Setup Html5Qrcode scanner
-  const html5QrcodeScanner = new Html5QrcodeScanner(
-    "reader", 
-    { fps: 10, qrbox: 250 },
-    /* verbose= */ false);
-  html5QrcodeScanner.render(onScanSuccess);
-
-  // Initialize UI
-  resetUI();
-</script>
+    new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 })
+      .render((text) => {
+        fetchItem(text);
+      });
+  </script>
 </body>
 </html>
