@@ -1,41 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>📦 Advanced Barcode Order App</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📦 Barcode Order App</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-<body class="bg-gray-50 p-4 sm:p-6 text-gray-800">
+<body class="bg-gray-50 text-gray-800 p-4 sm:p-6">
 
-  <h1 class="text-3xl font-bold mb-6 text-center">📦 Advanced Barcode Order App</h1>
+  <h1 class="text-2xl sm:text-3xl font-bold mb-4 text-center">📦 Barcode Order App</h1>
 
-  <!-- Scanner -->
+  <!-- Barcode Scanner -->
   <div id="reader" class="mx-auto mb-6 w-full max-w-md"></div>
 
-  <!-- Item Details with editable fields -->
-  <div id="item-details" class="hidden bg-white shadow rounded p-5 max-w-md mx-auto mb-6">
-    <label class="block mb-2 font-semibold">Product Name:</label>
-    <input id="item-name" class="w-full border rounded p-2 mb-4" type="text" />
-
-    <label class="block mb-2 font-semibold">Scale / Quantity:</label>
-    <input id="item-scale" class="w-full border rounded p-2 mb-4" type="text" placeholder="e.g. 500g, 1L, 12 pack" />
-
-    <img id="item-image" class="w-32 h-auto rounded border mb-4" src="" alt="Product Image" />
-
-    <label class="block mb-2 font-semibold">Quantity to Order:</label>
-    <input id="item-qty" class="w-24 border rounded p-2 text-center mb-4" type="number" min="1" value="1" />
-
-    <button id="add-btn" class="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700">Add to Order</button>
+  <!-- Item Details Card -->
+  <div id="item-details" class="hidden bg-white rounded-lg shadow p-4 mb-4 max-w-md mx-auto">
+    <h2 id="item-name" class="text-xl font-semibold mb-2"></h2>
+    <img id="item-image" src="" class="w-24 h-auto mb-2 rounded border"/>
+    <p id="item-scale" class="text-sm text-gray-600 mb-2"></p>
+    <div class="flex items-center gap-2">
+      <input id="item-qty" type="number" min="1" value="1"
+             class="border p-2 rounded w-20 text-center text-lg"/>
+      <button onclick="addToOrder()" class="bg-blue-600 text-white rounded px-4 py-2 w-full sm:w-auto">
+        ➕ Add to Order
+      </button>
+    </div>
   </div>
 
   <!-- Order List -->
-  <div class="bg-white max-w-md mx-auto rounded shadow p-5">
-    <h2 class="text-xl font-bold mb-4">📝 Current Order</h2>
+  <div class="bg-white rounded-lg shadow p-4 max-w-md mx-auto">
+    <h2 class="text-lg font-bold mb-2">📝 Current Order</h2>
     <div id="order-list" class="space-y-3"></div>
-    <button id="finish-order" class="mt-6 w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 hidden">
+    <button onclick="generatePDF()" id="finish-order"
+            class="mt-4 hidden w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
       ✅ Finish Order & Download PDF
     </button>
   </div>
@@ -44,116 +43,48 @@
     let currentItem = null;
     let orderList = [];
 
-    // Utility: Attempt to extract best scale from multiple fields
-    function extractBestScale(product) {
-      // Possible fields with scale info
-      const candidates = [
-        product.quantity,
-        product.product_quantity,
-        product.serving_size,
-        product.size,
-        product.weight,
-        product.net_weight,
-        product.net_content,
-        product.packaging_quantity,
-      ];
-
-      for (const val of candidates) {
-        if (val && typeof val === 'string' && val.trim() !== '') return val.trim();
-      }
-      return "N/A";
-    }
-
-    // Fetch from OpenFoodFacts (free and no API key)
-    async function fetchFromOpenFoodFacts(barcode) {
-      try {
-        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-        const data = await res.json();
-        if (data.status === 1) {
-          const product = data.product;
-          return {
+    function fetchItem(barcode) {
+      fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
+        .then(res => res.json())
+        .then(data => {
+          let product = data.status === 1 ? data.product : {};
+          currentItem = {
+            barcode,
             name: product.product_name || "Unknown Product",
             image: product.image_front_url || "",
-            scale: extractBestScale(product),
+            scale: product.quantity || product.product_quantity || "N/A"
           };
-        }
-      } catch (e) {
-        // console.warn("OpenFoodFacts error", e);
-      }
-      return null;
-    }
-
-    // Fallback: Barcode Lookup API (you need an API key here)
-    async function fetchFromBarcodeLookup(barcode) {
-      const apiKey = "YOUR_API_KEY_HERE"; // <-- Replace with your Barcode Lookup API key
-      try {
-        const res = await fetch(
-          `https://api.barcodelookup.com/v3/products?barcode=${barcode}&key=${apiKey}`
-        );
-        const data = await res.json();
-        if (data.products && data.products.length > 0) {
-          const p = data.products[0];
-          return {
-            name: p.product_name || "Unknown Product",
-            image: p.images && p.images.length > 0 ? p.images[0] : "",
-            scale: p.size || p.weight || p.package_quantity || "N/A",
+          showItemDetails();
+        })
+        .catch(() => {
+          currentItem = {
+            barcode,
+            name: "Unknown Product",
+            image: "",
+            scale: "N/A"
           };
-        }
-      } catch (e) {
-        // console.warn("Barcode Lookup error", e);
-      }
-      return null;
-    }
-
-    async function fetchItem(barcode) {
-      // Try OpenFoodFacts first
-      let item = await fetchFromOpenFoodFacts(barcode);
-      if (!item) {
-        // fallback to BarcodeLookup if key is set
-        item = await fetchFromBarcodeLookup(barcode);
-      }
-
-      if (!item) {
-        item = {
-          name: "Unknown Product",
-          image: "",
-          scale: "N/A",
-        };
-      }
-      currentItem = { barcode, ...item };
-      showItemDetails();
+          showItemDetails();
+        });
     }
 
     function showItemDetails() {
-      document.getElementById("item-name").value = currentItem.name;
-      document.getElementById("item-scale").value = currentItem.scale;
+      document.getElementById("item-name").textContent = currentItem.name;
+      document.getElementById("item-scale").textContent = `Scale: ${currentItem.scale}`;
       const img = document.getElementById("item-image");
       img.src = currentItem.image || "";
-      img.style.display = currentItem.image ? "block" : "none";
-      document.getElementById("item-qty").value = 1;
+      img.classList.toggle("hidden", !currentItem.image);
       document.getElementById("item-details").classList.remove("hidden");
-      document.getElementById("add-btn").disabled = false;
+      document.getElementById("item-qty").value = 1;
     }
 
-    document.getElementById("add-btn").addEventListener("click", () => {
-      const name = document.getElementById("item-name").value.trim() || "Unknown Product";
-      const scale = document.getElementById("item-scale").value.trim() || "N/A";
-      const quantity = parseInt(document.getElementById("item-qty").value);
-      if (!quantity || quantity <= 0) {
-        alert("Please enter a valid quantity");
-        return;
-      }
-      orderList.push({
-        barcode: currentItem.barcode,
-        name,
-        scale,
-        quantity,
-        image: currentItem.image || "",
-      });
+    function addToOrder() {
+      const qty = parseInt(document.getElementById("item-qty").value);
+      if (!qty || qty <= 0) return alert("Please enter a valid quantity.");
+      orderList.push({ ...currentItem, quantity: qty });
       currentItem = null;
       document.getElementById("item-details").classList.add("hidden");
       renderOrderList();
-    });
+    }
 
     function renderOrderList() {
       const list = document.getElementById("order-list");
@@ -163,17 +94,19 @@
           <div class="flex justify-between items-center border-b pb-2">
             <div>
               <p class="font-medium">${index + 1}. ${item.name}</p>
-              <p class="text-sm text-gray-600">Qty: ${item.quantity} | ${item.scale}</p>
+              <p class="text-sm text-gray-500">Qty: ${item.quantity} | ${item.scale}</p>
             </div>
             <div class="flex items-center gap-2">
               ${item.image ? `<img src="${item.image}" class="w-12 h-12 rounded border" />` : ""}
               <button onclick="removeFromOrder(${index})"
-                      class="text-red-600 hover:text-red-800 text-sm font-bold ml-2">❌ Remove</button>
+                      class="text-red-600 hover:text-red-800 text-sm font-bold ml-2">
+                ❌ Remove
+              </button>
             </div>
           </div>
         `;
       });
-      document.getElementById("finish-order").style.display = orderList.length ? "block" : "none";
+      document.getElementById("finish-order").classList.toggle("hidden", orderList.length === 0);
     }
 
     function removeFromOrder(index) {
@@ -181,17 +114,19 @@
       renderOrderList();
     }
 
-    function generatePDF() {
-      if (orderList.length === 0) {
+    async function generatePDF() {
+      if(orderList.length === 0) {
         alert("Your order is empty!");
         return;
       }
+
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       let y = 10;
       doc.setFontSize(18);
       doc.text("Order Summary", 20, y);
       y += 10;
+
       doc.setFontSize(12);
       doc.text(`Date: ${new Date().toLocaleString()}`, 20, y);
       y += 10;
@@ -209,14 +144,10 @@
       doc.save("order-summary.pdf");
     }
 
-    // Init scanner
+    // Initialize barcode scanner
     new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }).render((barcode) => {
       fetchItem(barcode);
     });
-
-    // Expose removeFromOrder to window so button onclick works
-    window.removeFromOrder = removeFromOrder;
-    window.generatePDF = generatePDF;
   </script>
 </body>
 </html>
