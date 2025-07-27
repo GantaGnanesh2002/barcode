@@ -1,383 +1,222 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>MY BOXMOOR ORDERING APP</title>
-
-  <!-- Tailwind CSS CDN -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>📦 Advanced Barcode Order App</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Google Fonts: Poppins -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
-
-  <!-- Libraries -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #e0f2fe, #dbeafe, #c7d2fe);
-      min-height: 100vh;
-      margin: 0;
-      padding-top: 4rem; /* header space */
-    }
-    header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: 4rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 1.5rem;
-      color: #4338ca;
-      letter-spacing: 0.1em;
-      background: rgba(255 255 255 / 0.85);
-      backdrop-filter: saturate(180%) blur(10px);
-      box-shadow: 0 2px 8px rgb(67 56 202 / 0.25);
-      z-index: 100;
-    }
-    #reader {
-      max-width: 360px;
-      margin: 0 auto 1rem;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
-    }
-    .container {
-      max-width: 420px;
-      margin: 0 auto;
-      background: white;
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgb(0 0 0 / 0.1);
-    }
-    input[type="number"]::-webkit-inner-spin-button,
-    input[type="number"]::-webkit-outer-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    .order-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.6rem 0.8rem;
-      border-bottom: 1px solid #e5e7eb;
-      gap: 0.75rem;
-    }
-    .order-item-info {
-      flex-grow: 1;
-      min-width: 0;
-    }
-    .order-item-info p {
-      margin: 0;
-      font-size: 0.9rem;
-      color: #374151;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .order-item-info p:first-child {
-      font-weight: 600;
-      color: #1e40af;
-      margin-bottom: 2px;
-    }
-    .order-item-image {
-      width: 48px;
-      height: 48px;
-      object-fit: contain;
-      border-radius: 8px;
-      background: #f9fafb;
-      flex-shrink: 0;
-    }
-    .remove-btn {
-      background: transparent;
-      border: none;
-      color: #ef4444;
-      font-weight: 900;
-      font-size: 1.4rem;
-      cursor: pointer;
-      transition: color 0.2s ease;
-    }
-    .remove-btn:hover {
-      color: #b91c1c;
-    }
-    button {
-      background-color: #4338ca;
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      border: none;
-      user-select: none;
-    }
-    button:disabled {
-      background-color: #a5b4fc;
-      cursor: not-allowed;
-    }
-    button:hover:not(:disabled) {
-      background-color: #3730a3;
-    }
-  </style>
 </head>
-<body>
+<body class="bg-gray-50 p-4 sm:p-6 text-gray-800">
 
-<header>MY BOXMOOR ORDERING APP</header>
+  <h1 class="text-3xl font-bold mb-6 text-center">📦 Advanced Barcode Order App</h1>
 
-<div class="container">
+  <!-- Scanner -->
+  <div id="reader" class="mx-auto mb-6 w-full max-w-md"></div>
 
-  <div id="reader"></div>
+  <!-- Item Details with editable fields -->
+  <div id="item-details" class="hidden bg-white shadow rounded p-5 max-w-md mx-auto mb-6">
+    <label class="block mb-2 font-semibold">Product Name:</label>
+    <input id="item-name" class="w-full border rounded p-2 mb-4" type="text" />
 
-  <div id="item-details" class="hidden mt-4 space-y-2">
-    <input id="item-name" type="text" readonly
-      class="w-full border border-gray-300 rounded-md p-2 text-gray-700 font-semibold bg-gray-100" placeholder="Item Name" />
-    <input id="item-scale" type="text" readonly
-      class="w-full border border-gray-300 rounded-md p-2 text-gray-600 bg-gray-100" placeholder="Scale" />
-    <img id="item-image" class="mx-auto rounded-md max-h-36 hidden" alt="Product Image" />
-    <input id="item-qty" type="number" min="1" value="1" placeholder="Quantity"
-      class="w-full border border-indigo-400 focus:ring-indigo-500 rounded-md p-2 text-gray-700" />
-    <button id="add-btn" disabled>Add to Order</button>
+    <label class="block mb-2 font-semibold">Scale / Quantity:</label>
+    <input id="item-scale" class="w-full border rounded p-2 mb-4" type="text" placeholder="e.g. 500g, 1L, 12 pack" />
+
+    <img id="item-image" class="w-32 h-auto rounded border mb-4" src="" alt="Product Image" />
+
+    <label class="block mb-2 font-semibold">Quantity to Order:</label>
+    <input id="item-qty" class="w-24 border rounded p-2 text-center mb-4" type="number" min="1" value="1" />
+
+    <button id="add-btn" class="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700">Add to Order</button>
   </div>
 
-  <h2 class="mt-6 mb-2 text-lg font-semibold text-indigo-700">Order List</h2>
-  <div id="order-list" class="max-h-72 overflow-y-auto border border-gray-200 rounded-md bg-white"></div>
+  <!-- Order List -->
+  <div class="bg-white max-w-md mx-auto rounded shadow p-5">
+    <h2 class="text-xl font-bold mb-4">📝 Current Order</h2>
+    <div id="order-list" class="space-y-3"></div>
+    <button id="finish-order" class="mt-6 w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 hidden">
+      ✅ Finish Order & Download PDF
+    </button>
+  </div>
 
-  <button id="finish-order" class="mt-6 w-full hidden">Finish & Download PDF</button>
-</div>
+  <script>
+    let currentItem = null;
+    let orderList = [];
 
-<script>
-  let orderList = [];
-  let currentItem = null;
+    // Utility: Attempt to extract best scale from multiple fields
+    function extractBestScale(product) {
+      // Possible fields with scale info
+      const candidates = [
+        product.quantity,
+        product.product_quantity,
+        product.serving_size,
+        product.size,
+        product.weight,
+        product.net_weight,
+        product.net_content,
+        product.packaging_quantity,
+      ];
 
-  // Dummy product database for demo
-  const dummyProducts = [
-    { name: "Classic Cola", scale: "500 ml", image: "https://dummyimage.com/120x120/3b82f6/ffffff&text=Cola" },
-    { name: "Organic Apple Juice", scale: "1 Litre", image: "https://dummyimage.com/120x120/10b981/ffffff&text=Apple+Juice" },
-    { name: "Natural Mineral Water", scale: "750 ml", image: "https://dummyimage.com/120x120/60a5fa/ffffff&text=Water" },
-    { name: "Energy Drink", scale: "330 ml", image: "https://dummyimage.com/120x120/f97316/ffffff&text=Energy" },
-    { name: "Chocolate Bar", scale: "100 g", image: "https://dummyimage.com/120x120/ef4444/ffffff&text=Choco" },
-  ];
-
-  // Generate a dummy product for any barcode scanned, cycling dummyProducts based on barcode hash
-  function getDummyProduct(barcode) {
-    if (!barcode) return null;
-    let sum = 0;
-    for (const c of barcode) sum += c.charCodeAt(0);
-    return dummyProducts[sum % dummyProducts.length];
-  }
-
-  // Show product details in UI
-  function showItemDetails(product) {
-    if (!product) return;
-
-    document.getElementById("item-name").value = product.name;
-    document.getElementById("item-scale").value = product.scale;
-    const imgEl = document.getElementById("item-image");
-    if (product.image) {
-      imgEl.src = product.image;
-      imgEl.classList.remove("hidden");
-    } else {
-      imgEl.src = "";
-      imgEl.classList.add("hidden");
-    }
-    document.getElementById("item-qty").value = 1;
-    document.getElementById("add-btn").disabled = false;
-    document.getElementById("item-details").classList.remove("hidden");
-  }
-
-  // Reset item details input
-  function resetItemDetails() {
-    document.getElementById("item-name").value = "";
-    document.getElementById("item-scale").value = "";
-    document.getElementById("item-image").src = "";
-    document.getElementById("item-image").classList.add("hidden");
-    document.getElementById("item-qty").value = 1;
-    document.getElementById("add-btn").disabled = true;
-    document.getElementById("item-details").classList.add("hidden");
-  }
-
-  // Render order list UI
-  function renderOrderList() {
-    const list = document.getElementById("order-list");
-    list.innerHTML = "";
-    orderList.forEach((item, idx) => {
-      const div = document.createElement("div");
-      div.className = "order-item";
-
-      const infoDiv = document.createElement("div");
-      infoDiv.className = "order-item-info";
-
-      const pName = document.createElement("p");
-      pName.textContent = item.name;
-
-      const pScale = document.createElement("p");
-      pScale.textContent = "Scale: " + item.scale;
-
-      const pQty = document.createElement("p");
-      pQty.textContent = "Qty: " + item.qty;
-
-      infoDiv.appendChild(pName);
-      infoDiv.appendChild(pScale);
-      infoDiv.appendChild(pQty);
-
-      const img = document.createElement("img");
-      img.className = "order-item-image";
-      img.src = item.image || "";
-      img.alt = item.name;
-
-      const rmBtn = document.createElement("button");
-      rmBtn.className = "remove-btn";
-      rmBtn.title = "Remove item";
-      rmBtn.innerHTML = "×";
-      rmBtn.onclick = () => {
-        orderList.splice(idx, 1);
-        renderOrderList();
-        if (orderList.length === 0) {
-          document.getElementById("finish-order").classList.add("hidden");
-        }
-      };
-
-      div.appendChild(img);
-      div.appendChild(infoDiv);
-      div.appendChild(rmBtn);
-      list.appendChild(div);
-    });
-
-    if (orderList.length === 0) {
-      document.getElementById("finish-order").classList.add("hidden");
-    } else {
-      document.getElementById("finish-order").classList.remove("hidden");
-    }
-  }
-
-  // Add item to order
-  function addItemToOrder() {
-    const name = document.getElementById("item-name").value.trim();
-    const scale = document.getElementById("item-scale").value.trim();
-    const qty = Number(document.getElementById("item-qty").value);
-    const image = document.getElementById("item-image").src;
-
-    if (!name) return alert("Invalid item name");
-    if (qty <= 0) return alert("Quantity must be 1 or more");
-
-    orderList.push({ name, scale, qty, image });
-    renderOrderList();
-    resetItemDetails();
-    currentItem = null;
-  }
-
-  // Generate PDF order summary
-  async function generatePDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    doc.setFont("Poppins", "bold");
-    doc.setFontSize(22);
-    doc.setTextColor("#4338ca");
-    doc.text("MY BOXMOOR ORDER SUMMARY", 105, 20, { align: "center" });
-
-    doc.setFontSize(12);
-    doc.setFont("Poppins", "normal");
-    const dateStr = new Date().toLocaleString();
-    doc.text(`Date/Time: ${dateStr}`, 105, 30, { align: "center" });
-
-    let y = 40;
-    const lineHeight = 25;
-    let totalItems = 0;
-
-    for (const item of orderList) {
-      if (y > 250) {
-        doc.addPage();
-        y = 20;
+      for (const val of candidates) {
+        if (val && typeof val === 'string' && val.trim() !== '') return val.trim();
       }
-      doc.setFont("Poppins", "bold");
-      doc.setTextColor("#1e40af");
-      doc.text(item.name, 20, y);
+      return "N/A";
+    }
 
-      doc.setFont("Poppins", "normal");
-      doc.setTextColor("#374151");
-      doc.text(`Scale: ${item.scale}`, 20, y + 7);
-      doc.text(`Quantity: ${item.qty}`, 20, y + 14);
+    // Fetch from OpenFoodFacts (free and no API key)
+    async function fetchFromOpenFoodFacts(barcode) {
+      try {
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+        const data = await res.json();
+        if (data.status === 1) {
+          const product = data.product;
+          return {
+            name: product.product_name || "Unknown Product",
+            image: product.image_front_url || "",
+            scale: extractBestScale(product),
+          };
+        }
+      } catch (e) {
+        // console.warn("OpenFoodFacts error", e);
+      }
+      return null;
+    }
 
-      if (item.image) {
-        try {
-          // fetch image as base64
-          const imgData = await getImageBase64(item.image);
-          doc.addImage(imgData, "JPEG", 140, y - 10, 40, 40);
-        } catch {}
+    // Fallback: Barcode Lookup API (you need an API key here)
+    async function fetchFromBarcodeLookup(barcode) {
+      const apiKey = "YOUR_API_KEY_HERE"; // <-- Replace with your Barcode Lookup API key
+      try {
+        const res = await fetch(
+          `https://api.barcodelookup.com/v3/products?barcode=${barcode}&key=${apiKey}`
+        );
+        const data = await res.json();
+        if (data.products && data.products.length > 0) {
+          const p = data.products[0];
+          return {
+            name: p.product_name || "Unknown Product",
+            image: p.images && p.images.length > 0 ? p.images[0] : "",
+            scale: p.size || p.weight || p.package_quantity || "N/A",
+          };
+        }
+      } catch (e) {
+        // console.warn("Barcode Lookup error", e);
+      }
+      return null;
+    }
+
+    async function fetchItem(barcode) {
+      // Try OpenFoodFacts first
+      let item = await fetchFromOpenFoodFacts(barcode);
+      if (!item) {
+        // fallback to BarcodeLookup if key is set
+        item = await fetchFromBarcodeLookup(barcode);
       }
 
-      y += lineHeight;
-      totalItems += item.qty;
+      if (!item) {
+        item = {
+          name: "Unknown Product",
+          image: "",
+          scale: "N/A",
+        };
+      }
+      currentItem = { barcode, ...item };
+      showItemDetails();
     }
 
-    doc.setFont("Poppins", "bold");
-    doc.setTextColor("#4338ca");
-    doc.text(`Total Items: ${totalItems}`, 20, y + 10);
+    function showItemDetails() {
+      document.getElementById("item-name").value = currentItem.name;
+      document.getElementById("item-scale").value = currentItem.scale;
+      const img = document.getElementById("item-image");
+      img.src = currentItem.image || "";
+      img.style.display = currentItem.image ? "block" : "none";
+      document.getElementById("item-qty").value = 1;
+      document.getElementById("item-details").classList.remove("hidden");
+      document.getElementById("add-btn").disabled = false;
+    }
 
-    doc.save(`Boxmoor_Order_${new Date().toISOString().slice(0,10)}.pdf`);
-  }
-
-  // Convert image url to base64 for jsPDF
-  async function getImageBase64(url) {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
+    document.getElementById("add-btn").addEventListener("click", () => {
+      const name = document.getElementById("item-name").value.trim() || "Unknown Product";
+      const scale = document.getElementById("item-scale").value.trim() || "N/A";
+      const quantity = parseInt(document.getElementById("item-qty").value);
+      if (!quantity || quantity <= 0) {
+        alert("Please enter a valid quantity");
+        return;
+      }
+      orderList.push({
+        barcode: currentItem.barcode,
+        name,
+        scale,
+        quantity,
+        image: currentItem.image || "",
+      });
+      currentItem = null;
+      document.getElementById("item-details").classList.add("hidden");
+      renderOrderList();
     });
-  }
 
-  // Barcode scan success callback
-  function onScanSuccess(decodedText, decodedResult) {
-    if (currentItem && currentItem.barcode === decodedText) return; // avoid duplicate scanning
-    currentItem = { barcode: decodedText };
+    function renderOrderList() {
+      const list = document.getElementById("order-list");
+      list.innerHTML = "";
+      orderList.forEach((item, index) => {
+        list.innerHTML += `
+          <div class="flex justify-between items-center border-b pb-2">
+            <div>
+              <p class="font-medium">${index + 1}. ${item.name}</p>
+              <p class="text-sm text-gray-600">Qty: ${item.quantity} | ${item.scale}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              ${item.image ? `<img src="${item.image}" class="w-12 h-12 rounded border" />` : ""}
+              <button onclick="removeFromOrder(${index})"
+                      class="text-red-600 hover:text-red-800 text-sm font-bold ml-2">❌ Remove</button>
+            </div>
+          </div>
+        `;
+      });
+      document.getElementById("finish-order").style.display = orderList.length ? "block" : "none";
+    }
 
-    const product = getDummyProduct(decodedText);
-    showItemDetails(product);
-  }
+    function removeFromOrder(index) {
+      orderList.splice(index, 1);
+      renderOrderList();
+    }
 
-  // Barcode scan failure callback (ignored)
-  function onScanFailure(error) {
-    // do nothing
-  }
+    function generatePDF() {
+      if (orderList.length === 0) {
+        alert("Your order is empty!");
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 10;
+      doc.setFontSize(18);
+      doc.text("Order Summary", 20, y);
+      y += 10;
+      doc.setFontSize(12);
+      doc.text(`Date: ${new Date().toLocaleString()}`, 20, y);
+      y += 10;
 
-  // Init QR code scanner on page load
-  window.onload = () => {
-    const html5QrcodeScanner = new Html5Qrcode("reader");
-    const qrConfig = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      disableFlip: false,
-    };
-
-    Html5Qrcode.getCameras()
-      .then(devices => {
-        if (devices && devices.length) {
-          html5QrcodeScanner.start(
-            { facingMode: "environment" },
-            qrConfig,
-            onScanSuccess,
-            onScanFailure
-          );
-        } else {
-          alert("No camera found. Please use a device with a camera.");
-        }
-      })
-      .catch(err => {
-        alert("Camera permission denied or no camera found.");
+      let totalItems = 0;
+      orderList.forEach((item, i) => {
+        doc.text(`${i + 1}. ${item.name}`, 20, y);
+        doc.text(`Qty: ${item.quantity} | ${item.scale}`, 130, y);
+        totalItems += item.quantity;
+        y += 10;
       });
 
-    document.getElementById("add-btn").addEventListener("click", addItemToOrder);
-    document.getElementById("finish-order").addEventListener("click", generatePDF);
-  };
-</script>
+      y += 10;
+      doc.text(`Total Items: ${totalItems}`, 20, y);
+      doc.save("order-summary.pdf");
+    }
 
+    // Init scanner
+    new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }).render((barcode) => {
+      fetchItem(barcode);
+    });
+
+    // Expose removeFromOrder to window so button onclick works
+    window.removeFromOrder = removeFromOrder;
+    window.generatePDF = generatePDF;
+  </script>
 </body>
 </html>
